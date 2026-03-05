@@ -5,43 +5,45 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-[16px] font-medium whitespace-nowrap transition-all outline-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
+        // Solid Button - 주황색 배경
+        solid:
+          "bg-[#E5762C] text-white hover:bg-[#D16825]",
+        // Solid Selected - 연한 주황색 배경 + 연한 테두리
+        "solid-selected":
+          "bg-orange-300 text-white border-2 border-orange-200",
+        // Solid Disabled - gray-50 배경
+        "solid-disabled":
+          "bg-gray-50 text-gray-400 cursor-not-allowed",
+        // Outlined Button - 주황색 테두리 + 주황색 텍스트
+        outlined:
+          "bg-transparent text-[#E5762C] border-2 border-[#E5762C] hover:bg-orange-50",
+        // Outlined Selected - 흰색 배경 + 주황색 테두리
+        "outlined-selected":
+          "bg-white text-[#E5762C] border-2 border-[#E5762C]",
+        // Outlined Disabled - 회색 테두리 + 회색 텍스트
+        "outlined-disabled":
+          "bg-transparent text-gray-400 border border-gray-200 cursor-not-allowed",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        sm: "w-[327px] h-[54px] text-sm",
+        lg: "w-[640px] h-[64px] text-base",
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: "solid",
+      size: "sm",
     },
   }
 )
 
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant,
+  size,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
