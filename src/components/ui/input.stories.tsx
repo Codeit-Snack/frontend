@@ -13,7 +13,7 @@ const meta: Meta<typeof Input> = {
       control: "select",
       options: ["default", "outlined", "search", "number"],
     },
-    size: {
+    inputSize: {
       control: "select",
       options: ["sm", "md"],
     },
@@ -52,7 +52,7 @@ export const Disabled: Story = {
 export const SearchSm: Story = {
   args: {
     variant: "search",
-    size: "sm",
+    inputSize: "sm",
     placeholder: "Search...",
   },
 }
@@ -60,7 +60,7 @@ export const SearchSm: Story = {
 export const SearchMd: Story = {
   args: {
     variant: "search",
-    size: "md",
+    inputSize: "md",
     placeholder: "Search...",
   },
 }
@@ -68,7 +68,7 @@ export const SearchMd: Story = {
 export const SearchWithValue: Story = {
   args: {
     variant: "search",
-    size: "md",
+    inputSize: "md",
     defaultValue: "query",
     placeholder: "Search...",
   },
@@ -77,7 +77,7 @@ export const SearchWithValue: Story = {
 export const OutlinedSm: Story = {
   args: {
     variant: "outlined",
-    size: "sm",
+    inputSize: "sm",
     placeholder: "Placeholder",
   },
 }
@@ -85,7 +85,7 @@ export const OutlinedSm: Story = {
 export const OutlinedMd: Story = {
   args: {
     variant: "outlined",
-    size: "md",
+    inputSize: "md",
     placeholder: "Placeholder",
   },
 }

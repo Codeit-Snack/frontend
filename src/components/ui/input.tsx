@@ -4,6 +4,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 
 const inputVariants = cva(
   "w-full min-w-0 rounded-md border border-input bg-transparent py-1 shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
@@ -79,16 +80,16 @@ const textareaVariants = cva(
   }
 )
 
-type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
+type InputProps = React.ComponentProps<"input"> & {
   variant?: "default" | "outlined" | "search" | "number"
-  size?: "sm" | "md"
+  inputSize?: "sm" | "md"
 }
 
 function Input({
   className,
   type = "text",
   variant = "default",
-  size = "md",
+  inputSize = "md",
   ...props
 }: InputProps) {
   if (variant === "search") {
@@ -96,7 +97,7 @@ function Input({
       <InputWithSearchIcon
         className={className}
         type={type}
-        size={size}
+        inputSize={inputSize}
         {...props}
       />
     )
@@ -109,7 +110,7 @@ function Input({
           type="number"
           data-slot="input"
           data-variant={variant}
-          data-size={size}
+          data-size={inputSize}
           className={cn(
             "h-full w-full min-w-0 rounded-md border-0 bg-transparent py-1 pr-8 text-right outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 font-[Pretendard] font-normal text-[#ABABAB] placeholder:text-[#ABABAB] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             className
@@ -126,8 +127,8 @@ function Input({
       type={type}
       data-slot="input"
       data-variant={variant}
-      data-size={size}
-      className={cn(inputVariants({ variant, size, className }))}
+      data-size={inputSize}
+      className={cn(inputVariants({ variant, size: inputSize, className }))}
       {...props}
     />
   )
@@ -135,13 +136,13 @@ function Input({
 
 function InputWithSearchIcon({
   className,
-  size = "md",
+  inputSize = "md",
   value,
   defaultValue,
   onChange,
   ...props
-}: Omit<React.ComponentProps<"input">, "size"> & {
-  size?: "sm" | "md"
+}: React.ComponentProps<"input"> & {
+  inputSize?: "sm" | "md"
 }) {
   const [internalValue, setInternalValue] = React.useState(
     (defaultValue as string) ?? ""
@@ -162,16 +163,16 @@ function InputWithSearchIcon({
     } as React.ChangeEvent<HTMLInputElement>)
   }
 
-  const searchIconSrc = size === "sm" ? "/assets/icons/ic_search-sm.svg" : "/assets/icons/ic_search-md.svg"
-  const clearIconSrc = size === "sm" ? "/assets/icons/ic_X-circle-sm.svg" : "/assets/icons/ic_X-circle-md.svg"
-  const iconSizeClass = size === "sm" ? "size-6" : "size-9"
+  const searchIconSrc = inputSize === "sm" ? "/assets/icons/ic_search-sm.svg" : "/assets/icons/ic_search-md.svg"
+  const clearIconSrc = inputSize === "sm" ? "/assets/icons/ic_X-circle-sm.svg" : "/assets/icons/ic_X-circle-md.svg"
+  const iconSizeClass = inputSize === "sm" ? "size-6" : "size-9"
 
   return (
     <div
       className={cn(
         "relative inline-flex items-center rounded-md border border-input bg-transparent shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-        size === "sm" && "h-[54px] w-[260px]",
-        size === "md" && "h-[64px] w-[560px]"
+        inputSize === "sm" && "h-[54px] w-[260px]",
+        inputSize === "md" && "h-[64px] w-[560px]"
       )}
     >
       {!hasValue && (
@@ -189,26 +190,28 @@ function InputWithSearchIcon({
         role="searchbox"
         data-slot="input"
         data-variant="search"
-        data-size={size}
+        data-size={inputSize}
         value={currentValue}
         onChange={handleChange}
         className={cn(
-          inputVariants({ variant: "search", size, className }),
-          hasValue && size === "sm" && "pl-3 pr-16",
-          hasValue && size === "md" && "pl-3 pr-20"
+          inputVariants({ variant: "search", size: inputSize, className }),
+          hasValue && inputSize === "sm" && "pl-3 pr-16",
+          hasValue && inputSize === "md" && "pl-3 pr-20"
         )}
         {...props}
       />
       {hasValue && (
         <span className="absolute right-3 flex items-center gap-1">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size={inputSize === "sm" ? "icon-xs" : "icon"}
             onClick={handleClear}
             className={cn("flex text-input hover:opacity-80", iconSizeClass)}
             aria-label="Clear"
           >
             <img src={clearIconSrc} alt="" className={iconSizeClass} aria-hidden />
-          </button>
+          </Button>
           <span className={cn("flex text-input", iconSizeClass)}>
             <img src={searchIconSrc} alt="" className={iconSizeClass} aria-hidden />
           </span>
