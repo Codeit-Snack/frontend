@@ -25,7 +25,7 @@ export const CategorySelect: StoryObj = {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
-            variant="outline" 
+            variant="outlined" 
             className="group flex h-12 w-[260px] items-center justify-between border-[#F97B22] border-[1px] rounded-[16px] px-4 transition-all duration-200 hover:bg-orange-50/30 outline-none focus:ring-1 focus:ring-[#F97B22]" 
           >
             <span className={selected !== "카테고리를 선택해주세요." ? "text-[#F97B22] font-bold" : "text-[#94A3B8]"}>
