@@ -1,11 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 function Dialog({
   ...props
@@ -50,32 +48,20 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+}: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "fixed top-[50%] left-[50%] z-50 w-full max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-[20px] bg-white p-8 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className
         )}
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   )
@@ -85,7 +71,17 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn("mb-6", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("flex flex-col gap-6", className)}
       {...props}
     />
   )
@@ -93,27 +89,19 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 
 function DialogFooter({
   className,
-  showCloseButton = false,
   children,
   ...props
-}: React.ComponentProps<"div"> & {
-  showCloseButton?: boolean
-}) {
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex gap-3 mt-8",
         className
       )}
       {...props}
     >
       {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
-        </DialogPrimitive.Close>
-      )}
     </div>
   )
 }
@@ -125,7 +113,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("text-xl font-bold text-gray-900", className)}
       {...props}
     />
   )
@@ -138,21 +126,242 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-gray-500 mt-1", className)}
       {...props}
     />
   )
 }
 
+function DialogLabel({
+  className,
+  ...props
+}: React.ComponentProps<"label">) {
+  return (
+    <label
+      data-slot="dialog-label"
+      className={cn("text-sm font-semibold text-gray-900 mb-2 block", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogInput({
+  className,
+  ...props
+}: React.ComponentProps<"input">) {
+  return (
+    <input
+      data-slot="dialog-input"
+      className={cn(
+        "w-full h-[50px] px-4 rounded-[12px] border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#E5762C] focus:ring-1 focus:ring-[#E5762C]",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogField({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-field"
+      className={cn("flex flex-col", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogImageUpload({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-image-upload"
+      className={cn(
+        "w-[100px] h-[100px] rounded-[12px] border border-gray-200 bg-gray-50 flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors",
+        className
+      )}
+      {...props}
+    >
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#9CA3AF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+      </svg>
+    </div>
+  )
+}
+
+function DialogTextarea({
+  className,
+  ...props
+}: React.ComponentProps<"textarea">) {
+  return (
+    <textarea
+      data-slot="dialog-textarea"
+      className={cn(
+        "w-full min-h-[120px] px-4 py-3 rounded-[12px] border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#E5762C] focus:ring-1 focus:ring-[#E5762C] resize-none",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogReadonlyField({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-readonly-field"
+      className={cn(
+        "w-full h-[50px] px-4 rounded-[12px] bg-[#FFF8F3] text-sm text-gray-900 flex items-center",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+interface RequestItem {
+  id: string
+  image?: string
+  category: string
+  name: string
+  price: number
+  quantity: number
+}
+
+interface DialogItemListProps extends React.ComponentProps<"div"> {
+  items: RequestItem[]
+  maxVisibleItems?: number
+}
+
+function DialogItemList({
+  className,
+  items,
+  maxVisibleItems = 2,
+  ...props
+}: DialogItemListProps) {
+  const needsScroll = items.length > maxVisibleItems
+  
+  return (
+    <div
+      data-slot="dialog-item-list"
+      className={cn(
+        "rounded-[12px] border border-gray-200 overflow-hidden",
+        needsScroll && "max-h-[240px] overflow-y-auto",
+        className
+      )}
+      {...props}
+    >
+      {items.map((item, index) => (
+        <DialogItemCard key={item.id} item={item} isLast={index === items.length - 1} />
+      ))}
+    </div>
+  )
+}
+
+interface DialogItemCardProps {
+  item: RequestItem
+  isLast?: boolean
+}
+
+function DialogItemCard({ item, isLast = false }: DialogItemCardProps) {
+  const totalPrice = item.price * item.quantity
+  
+  return (
+    <div
+      data-slot="dialog-item-card"
+      className={cn(
+        "p-4",
+        !isLast && "border-b border-gray-100"
+      )}
+    >
+      <div className="flex gap-3">
+        <div className="w-[60px] h-[60px] rounded-[8px] bg-gray-100 overflow-hidden flex-shrink-0">
+          {item.image ? (
+            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gray-200" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-400 mb-0.5">{item.category}</p>
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-sm text-gray-900">{item.price.toLocaleString()}원</p>
+        </div>
+      </div>
+      <div className="flex justify-between items-center mt-2">
+        <p className="text-xs text-gray-500">수량: {item.quantity}개</p>
+        <p className="text-base font-bold text-gray-900">{totalPrice.toLocaleString()}원</p>
+      </div>
+    </div>
+  )
+}
+
+interface DialogSummaryProps extends React.ComponentProps<"div"> {
+  totalCount: number
+  totalPrice: number
+}
+
+function DialogSummary({
+  className,
+  totalCount,
+  totalPrice,
+  ...props
+}: DialogSummaryProps) {
+  return (
+    <div
+      data-slot="dialog-summary"
+      className={cn(
+        "flex justify-between items-center py-2",
+        className
+      )}
+      {...props}
+    >
+      <p className="text-base font-bold text-gray-900">총 {totalCount}건</p>
+      <p className="text-xl font-bold text-[#E5762C]">{totalPrice.toLocaleString()}원</p>
+    </div>
+  )
+}
+
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogField,
   DialogFooter,
   DialogHeader,
+  DialogImageUpload,
+  DialogInput,
+  DialogItemList,
+  DialogLabel,
   DialogOverlay,
   DialogPortal,
+  DialogReadonlyField,
+  DialogSummary,
+  DialogTextarea,
   DialogTitle,
   DialogTrigger,
 }
+
+export type { RequestItem }

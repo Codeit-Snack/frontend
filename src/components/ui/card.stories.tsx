@@ -1,52 +1,66 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./card";
-import { Button } from "./button";
+import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
+import { ProductCard, ProductCardWithLike } from "./card";
 
-const meta: Meta<typeof Card> = {
+const meta: Meta<typeof ProductCard> = {
   title: "UI/Card",
-  component: Card,
+  component: ProductCard,
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
+  argTypes: {
+    image: {
+      control: "text",
+      description: "상품 이미지 URL",
+    },
+    category: {
+      control: "text",
+      description: "카테고리",
+    },
+    purchaseCount: {
+      control: "number",
+      description: "구매 횟수",
+    },
+    name: {
+      control: "text",
+      description: "상품명",
+    },
+    price: {
+      control: "number",
+      description: "가격",
+    },
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof ProductCard>;
 
-export const Default: Story = {
-  render: () => (
-    <Card className="w-[350px]">
-      <CardHeader>
-        <CardTitle>Card Title</CardTitle>
-        <CardDescription>Card Description</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Card content goes here.</p>
-      </CardContent>
-      <CardFooter>
-        <Button>Action</Button>
-      </CardFooter>
-    </Card>
-  ),
+export const ProductCardDefault: Story = {
+  args: {
+    image: "",
+    category: "청량 · 탄산음료",
+    purchaseCount: 29,
+    name: "코카콜라 제로",
+    price: 2000,
+  },
 };
 
-export const Simple: Story = {
-  render: () => (
-    <Card className="w-[350px]">
-      <CardHeader>
-        <CardTitle>Simple Card</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p>A simple card without footer.</p>
-      </CardContent>
-    </Card>
-  ),
+const ProductCardWithLikeWrapper = () => {
+  const [isLiked, setIsLiked] = useState(false);
+
+  return (
+    <ProductCardWithLike
+      image=""
+      category="청량 · 탄산음료"
+      purchaseCount={29}
+      name="코카콜라 제로"
+      price={2000}
+      isLiked={isLiked}
+      onLikeToggle={() => setIsLiked(!isLiked)}
+    />
+  );
+};
+
+export const ProductCardWithLikeDefault: Story = {
+  render: () => <ProductCardWithLikeWrapper />,
 };
