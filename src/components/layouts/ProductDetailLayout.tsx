@@ -18,7 +18,7 @@ export function ProductDetailLayout({
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="w-full h-[60px] bg-[#E5762C] flex items-center justify-center">
+      <header className="w-full h-[60px] bg-[var(--primary-orange-400)] flex items-center justify-center">
         {header || <span className="text-white font-bold text-xl">Header</span>}
       </header>
       

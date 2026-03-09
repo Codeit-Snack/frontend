@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { AuthLayout } from "./AuthLayout";
 import { ProductDetailLayout } from "./ProductDetailLayout";
 import { ListLayout } from "./ListLayout";

@@ -7,9 +7,9 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children, header }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDF8F3]">
+    <div className="min-h-screen flex flex-col bg-[var(--primary-orange-100)]">
       {/* Header */}
-      <header className="w-full h-[60px] bg-[#E5762C] flex items-center justify-center">
+      <header className="w-full h-[60px] bg-[var(--primary-orange-400)] flex items-center justify-center">
         {header || <span className="text-white font-bold text-xl">Header</span>}
       </header>
       
