@@ -1,7 +1,4 @@
 // src/components/ui/molecules/login-form/login-form.tsx
-// 로그인 폼 컴포넌트
-// 자주 쓰이는 상수들을 외부로 빼서 (constants) 관리 예정.
-
 "use client"
 
 import * as React from "react"
@@ -146,6 +143,7 @@ export const LoginForm = ({
           로그인
         </Button>
       </form>
+
     </>
   )
 }
