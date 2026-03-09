@@ -1,0 +1,454 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  Menu,
+  ShoppingCart,
+  User,
+  LogOut,
+  Package,
+  ShoppingBag,
+  ClipboardList,
+  FileText,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/** 주황 배경용 로고 (밝은색), 흰 배경용 로고 (주황). public/assets SVG 사용 */
+const LOGO_LIGHT_SRC = "/assets/snack_logo_light.svg";
+const LOGO_ORANGE_SRC = "/assets/snack_logo.svg";
+
+const LOGO_LABEL = "Snack";
+const LOGO_WHITE = "text-white text-3xl font-bold italic";
+const LOGO_ORANGE = "text-[var(--primary-orange-400)] text-2xl font-bold italic";
+
+/** 로고 이미지 (실패 시 텍스트 폴백). width/height 지정 시 해당 크기로 표시 */
+function LogoImg({
+  src,
+  alt = "Snack",
+  width,
+  height = 32,
+  variant = "orange",
+  className,
+}: {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  variant?: "light" | "orange";
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const w = width ?? height * 4;
+  const h = height;
+  if (failed) {
+    return (
+      <span className={cn(variant === "light" ? LOGO_WHITE : LOGO_ORANGE, className)}>
+        {LOGO_LABEL}
+      </span>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={w}
+      height={h}
+      className={cn("object-contain", className)}
+      style={{ width: `${w}px`, height: `${h}px` }}
+      onError={() => setFailed(true)}
+      unoptimized
+    />
+  );
+}
+
+type HeaderRole = "member" | "admin" | "superAdmin";
+
+const NAV_BY_ROLE: Record<HeaderRole, { label: string; href: string; icon: React.ElementType }[]> = {
+  member: [
+    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
+    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+  ],
+  admin: [
+    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
+    { label: "구매 요청 관리", href: "/admin/purchase-manage", icon: ClipboardList },
+    { label: "구매 내역 확인", href: "/admin/purchase-history", icon: FileText },
+    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+  ],
+  superAdmin: [
+    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
+    { label: "구매 요청 관리", href: "/admin/purchase-manage", icon: ClipboardList },
+    { label: "구매 내역 확인", href: "/admin/purchase-history", icon: FileText },
+    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+    { label: "관리", href: "/admin", icon: FileText },
+  ],
+};
+
+/** 헤더 높이: 모바일 54px, 태블릿 64px, PC 88px. PC(1920px 기준) 좌우 패딩 120px */
+const HEADER_HEIGHT_CLASS =
+  "min-h-[54px] md:min-h-[64px] lg:min-h-[88px] flex items-center px-4 md:px-8 lg:px-[120px]";
+/** GNB 왼쪽 영역(로고+네비) 간격 72px, 오른쪽 영역 간격 80px */
+/** 헤더 아래 콘텐츠 영역 좌우 패딩: 최대 120px, 화면이 줄어들면 점점 감소 (clamp 24px~120px) */
+export const CONTENT_PADDING_X = "px-[clamp(24px,6.25vw,120px)]";
+const GNB_LEFT_GAP = "gap-[72px]";
+const GNB_RIGHT_GAP = "gap-[80px]";
+
+/** 현재 경로가 해당 href와 일치하거나 하위 경로인지 */
+function isNavActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+}
+
+interface ClassNameProps {
+  className?: string;
+}
+
+export function LandingHeader({ className = "" }: ClassNameProps) {
+  return (
+    <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
+      <div className="w-full">
+        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+      </div>
+    </header>
+  );
+}
+
+export function LoginHeader({ className = "" }: ClassNameProps) {
+  return (
+    <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-between w-full">
+        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <div className={cn("flex", GNB_RIGHT_GAP)}>
+          <Link href="/login" className="text_xl_bold text-white hover:text-white/80 transition-colors">
+            로그인
+          </Link>
+          <Link href="/signup" className="text_xl_bold text-white hover:text-white/80 transition-colors">
+            기본 당일권 회원가입
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function LoggedInHeader({ className = "" }: ClassNameProps) {
+  return <LoginHeader className={className} />;
+}
+
+export function CenterHeader({ className = "" }: ClassNameProps) {
+  return (
+    <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-center w-full">
+        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+      </div>
+    </header>
+  );
+}
+
+export function FullWidthCenterHeader({ className = "" }: ClassNameProps) {
+  return (
+    <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-center w-full">
+        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+      </div>
+    </header>
+  );
+}
+
+interface MobileHeaderProps extends ClassNameProps {
+  cartCount?: number;
+  isLoggedIn?: boolean;
+  userRole?: HeaderRole;
+}
+
+export function MobileHeader({
+  cartCount = 0,
+  className = "",
+  isLoggedIn = false,
+  userRole = "member",
+}: MobileHeaderProps) {
+  const [open, setOpen] = useState(false);
+  const navItems = NAV_BY_ROLE[userRole];
+
+  return (
+    <header
+      className={cn(
+        "bg-white border-b border-gray-200",
+        HEADER_HEIGHT_CLASS,
+        "px-6",
+        className
+      )}
+    >
+      <div className="flex items-center w-full gap-6">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors p-1 shrink-0"
+          aria-label="메뉴 열기"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+
+        {open && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              aria-hidden
+              onClick={() => setOpen(false)}
+            />
+            <div className="fixed top-0 left-0 z-50 h-full w-[280px] max-w-[85vw] bg-white shadow-lg flex flex-col">
+              {/* 상단 우측 닫기 버튼 */}
+              <div className="flex justify-end p-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="p-2 -mr-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+                  aria-label="메뉴 닫기"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              {/* 메뉴 목록: 텍스트만, 구분선 없음 */}
+              <nav className="flex flex-col px-5 pb-6 overflow-auto">
+                {!isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/login"
+                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base"
+                      onClick={() => setOpen(false)}
+                    >
+                      로그인
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base"
+                      onClick={() => setOpen(false)}
+                    >
+                      기본 당일권 회원가입
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base"
+                        onClick={() => setOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base w-full text-left"
+                      onClick={() => setOpen(false)}
+                    >
+                      로그아웃
+                    </button>
+                  </>
+                )}
+              </nav>
+            </div>
+          </>
+        )}
+
+        <LogoImg
+          src={LOGO_ORANGE_SRC}
+          alt="Snack"
+          width={80}
+          height={50}
+          variant="orange"
+          className="shrink-0"
+        />
+        <div className="flex-1 min-w-0" aria-hidden />
+        <div className="flex items-center gap-1 shrink-0">
+            <Link
+              href="/cart"
+              className="relative p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+              aria-label="장바구니"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 bg-[var(--primary-orange-400)] text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/profile"
+              className="p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+              aria-label="마이페이지"
+            >
+              <User className="w-6 h-6" />
+            </Link>
+          </div>
+      </div>
+    </header>
+  );
+}
+
+interface DetailHeaderProps extends ClassNameProps {
+  showMenu?: boolean;
+  cartCount?: number;
+}
+
+export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProps) {
+  const pathname = usePathname();
+  const items = NAV_BY_ROLE.member;
+  return (
+    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-between w-full">
+        <div className={cn("flex items-center", GNB_LEFT_GAP)}>
+          <Link href="/" className="flex items-center">
+            <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
+          </Link>
+          <nav className={cn("flex", GNB_LEFT_GAP)}>
+            {items.map((item) => {
+              const active = isNavActive(pathname ?? "", item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    "text_xl_bold transition-colors",
+                    active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div className={cn("flex items-center", GNB_RIGHT_GAP)}>
+          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+            Cart
+            {cartCount > 0 && (
+              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </Link>
+          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+            Profile
+          </Link>
+          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+interface AdminHeaderProps extends ClassNameProps {
+  cartCount?: number;
+}
+
+export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps) {
+  const pathname = usePathname();
+  const items = NAV_BY_ROLE.admin;
+  return (
+    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-between w-full min-w-0">
+        <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
+          <Link href="/" className="flex items-center shrink-0">
+            <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
+          </Link>
+          <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>
+            {items.map((item) => {
+              const active = isNavActive(pathname ?? "", item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    "text_xl_bold transition-colors whitespace-nowrap shrink-0",
+                    active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
+          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Cart
+            {cartCount > 0 && (
+              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </Link>
+          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Profile
+          </Link>
+          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+interface SuperAdminHeaderProps extends ClassNameProps {
+  cartCount?: number;
+}
+
+export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHeaderProps) {
+  const pathname = usePathname();
+  const items = NAV_BY_ROLE.superAdmin;
+  return (
+    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+      <div className="flex items-center justify-between w-full min-w-0">
+        <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
+          <Link href="/" className="flex items-center shrink-0">
+            <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
+          </Link>
+          <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>
+            {items.map((item) => {
+              const active = isNavActive(pathname ?? "", item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    "text_xl_bold transition-colors whitespace-nowrap shrink-0",
+                    active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
+          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Cart
+            {cartCount > 0 && (
+              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </Link>
+          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Profile
+          </Link>
+          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
