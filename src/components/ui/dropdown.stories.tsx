@@ -51,12 +51,12 @@ export const CategorySelect: StoryObj = {
   render: () => <CategorySelectStory />,
 };
 
-export const Default: StoryObj = {
+export const CategoryDefault: StoryObj = {
   name: "기본상태",
   render: () => <CategorySelectStory />,
 };
 
-export const Disabled: StoryObj = {
+export const CategoryDisabled: StoryObj = {
   name: "비활성",
   render: () => (
     <DropdownMenu>
