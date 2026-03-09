@@ -146,12 +146,6 @@ export const LoginForm = ({
           로그인
         </Button>
       </form>
-      <p className="text-center text-sm text-gray-500 mt-4">
-        기업 담당자이신가요?{" "}
-        <span className="text-[#E5762C] cursor-pointer hover:underline">
-          가입하기
-        </span>
-      </p>
     </>
   )
 }
