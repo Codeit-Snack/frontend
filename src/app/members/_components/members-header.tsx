@@ -1,5 +1,8 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 interface MembersHeaderProps {
   keyword: string;
   onChangeKeyword: (value: string) => void;
@@ -15,19 +18,22 @@ export function MembersHeader({
     <header>
       <h1 className="text-3xl font-bold text-[#37352f]">회원 관리</h1>
       <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
-        <input
-          className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none transition focus:border-orange-400 md:max-w-[360px]"
+        <Input
+          variant="search"
+          inputSize="sm"
           value={keyword}
           onChange={(event) => onChangeKeyword(event.target.value)}
           placeholder="이름으로 검색하세요"
+          className="w-full md:w-auto md:min-w-[260px]"
         />
-        <button
+        <Button
           type="button"
           onClick={onInvite}
-          className="h-11 rounded-xl bg-orange-500 px-6 text-sm font-semibold text-white transition hover:bg-orange-600"
+          variant="solid"
+          className="h-[54px] w-full md:w-auto px-6 rounded-xl"
         >
           회원 초대하기
-        </button>
+        </Button>
       </div>
     </header>
   );

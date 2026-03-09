@@ -1,4 +1,6 @@
 import type { Member } from "../_lib/types";
+import { Chip } from "@/components/ui/chip";
+import { Button } from "@/components/ui/button";
 
 interface MembersTableProps {
   members: Member[];
@@ -50,26 +52,33 @@ export function MembersTable({
                 <td className="px-6 py-4 text-gray-700">{member.name}</td>
                 <td className="px-6 py-4 text-gray-500">{member.email}</td>
                 <td className="px-6 py-4">
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-500">
+                  <Chip
+                    variant="user"
+                    selected={member.role === "super_admin" || member.role === "admin"}
+                  >
                     {roleLabel(member.role)}
-                  </span>
+                  </Chip>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => onDeactivate(member.id)}
-                      className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-gray-200"
+                      variant="etc"
+                      size="etc-sm"
+                      className="rounded-lg font-normal"
                     >
                       계정 탈퇴
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => onChangeRole(member.id)}
-                      className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs text-white transition hover:bg-orange-600"
+                      variant="solid"
+                      size="etc-sm"
+                      className="rounded-lg font-normal"
                     >
                       권한 변경
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
