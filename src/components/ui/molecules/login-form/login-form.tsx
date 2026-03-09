@@ -5,6 +5,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 
 import { cn } from "@/lib/utils"
 import { useLoginFormValidation } from "@/hooks/login-form-validation"
@@ -49,7 +50,6 @@ export const LoginForm = ({
     const passwordValid = validatePassword(password)
     if (emailValid && passwordValid && onSubmitProp) {
       onSubmitProp(e)
-      window.alert("로그인 성공:임시 알림")
     }
   }
 
@@ -118,10 +118,12 @@ export const LoginForm = ({
             )}
             aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
           >
-            <img
+            <Image
               src={showPassword ? VISIBILITY_ON_SRC : VISIBILITY_OFF_SRC}
               alt=""
-              className={isSm ? "size-5" : "size-6"}
+              width={isSm ? 20 : 24}
+              height={isSm ? 20 : 24}
+              className={cn(isSm ? "size-5" : "size-6")}
               aria-hidden
             />
           </button>
