@@ -1,4 +1,5 @@
 export {
+  Header,
   LandingHeader,
   LoginHeader,
   LoggedInHeader,
@@ -10,3 +11,4 @@ export {
   SuperAdminHeader,
   CONTENT_PADDING_X,
 } from "./Headers";
+export type { HeaderProps, HeaderDevice, HeaderRole } from "./Headers";

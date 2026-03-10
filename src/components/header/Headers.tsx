@@ -65,7 +65,19 @@ function LogoImg({
   );
 }
 
-type HeaderRole = "member" | "admin" | "superAdmin";
+export type HeaderRole = "member" | "admin" | "superAdmin";
+
+/** 디바이스: PC / 모바일 */
+export type HeaderDevice = "pc" | "mobile";
+
+/** 통합 헤더 props: 로그인 여부 + 디바이스 + 권한으로 한 개 헤더로 관리 */
+export interface HeaderProps {
+  device: HeaderDevice;
+  isLoggedIn: boolean;
+  role?: HeaderRole;
+  cartCount?: number;
+  className?: string;
+}
 
 const NAV_BY_ROLE: Record<HeaderRole, { label: string; href: string; icon: React.ElementType }[]> = {
   member: [
@@ -98,6 +110,8 @@ const HEADER_HEIGHT_CLASS =
 export const CONTENT_PADDING_X = "px-[clamp(24px,6.25vw,120px)]";
 const GNB_LEFT_GAP = "gap-[72px]";
 const GNB_RIGHT_GAP = "gap-[80px]";
+/** 헤더 내부: PC(1920px~)에서만 최대 1680px·가운데 정렬 / 모바일·태블릿은 전체 너비 */
+const HEADER_CONTAINER_CLASS = "w-full min-[1920px]:max-w-[1680px] min-[1920px]:mx-auto";
 
 /** 현재 경로가 해당 href와 일치하거나 하위 경로인지 */
 function isNavActive(pathname: string, href: string) {
@@ -111,7 +125,7 @@ interface ClassNameProps {
 export function LandingHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
-      <div className="w-full">
+      <div className={cn("flex items-center", HEADER_CONTAINER_CLASS)}>
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
       </div>
     </header>
@@ -121,7 +135,7 @@ export function LandingHeader({ className = "" }: ClassNameProps) {
 export function LoginHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-between w-full">
+      <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
         <div className={cn("flex", GNB_RIGHT_GAP)}>
           <Link href="/login" className="text_xl_bold text-white hover:text-white/80 transition-colors">
@@ -143,7 +157,7 @@ export function LoggedInHeader({ className = "" }: ClassNameProps) {
 export function CenterHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-center w-full">
+      <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
       </div>
     </header>
@@ -153,7 +167,7 @@ export function CenterHeader({ className = "" }: ClassNameProps) {
 export function FullWidthCenterHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-center w-full">
+      <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
       </div>
     </header>
@@ -184,7 +198,7 @@ export function MobileHeader({
         className
       )}
     >
-      <div className="flex items-center w-full gap-6">
+      <div className={cn("flex items-center gap-6", HEADER_CONTAINER_CLASS)}>
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -303,7 +317,7 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
   const items = NAV_BY_ROLE.member;
   return (
     <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-between w-full">
+      <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
@@ -356,7 +370,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
   const items = NAV_BY_ROLE.admin;
   return (
     <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-between w-full min-w-0">
+      <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center shrink-0">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
@@ -409,7 +423,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
   const items = NAV_BY_ROLE.superAdmin;
   return (
     <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
-      <div className="flex items-center justify-between w-full min-w-0">
+      <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center shrink-0">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
@@ -451,4 +465,32 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
       </div>
     </header>
   );
+}
+
+/**
+ * 통합 헤더: 로그인 여부 + 디바이스 + 권한으로 하나로 관리
+ * - 비로그인 PC → LoginHeader
+ * - 비로그인 MO → CenterHeader (주황 배경, 가운데 로고)
+ * - 로그인 MO 회원/관리자/최고관리자 → MobileHeader
+ * - 로그인 PC 회원/관리자/최고관리자 → DetailHeader / AdminHeader / SuperAdminHeader
+ */
+export function Header({
+  device,
+  isLoggedIn,
+  role = "member",
+  cartCount = 0,
+  className = "",
+}: HeaderProps) {
+  if (!isLoggedIn) {
+    if (device === "mobile") return <CenterHeader className={className} />;
+    return <LoginHeader className={className} />;
+  }
+  if (device === "mobile") {
+    return (
+      <MobileHeader isLoggedIn userRole={role} cartCount={cartCount} className={className} />
+    );
+  }
+  if (role === "member") return <DetailHeader cartCount={cartCount} className={className} />;
+  if (role === "admin") return <AdminHeader cartCount={cartCount} className={className} />;
+  return <SuperAdminHeader cartCount={cartCount} className={className} />;
 }
