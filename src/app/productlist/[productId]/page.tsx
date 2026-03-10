@@ -47,7 +47,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <div className="p-8">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-gray-500">{product.category}</p>
-                <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-500">
+                <span className="rounded-full bg-[var(--secondary-illustration-02)] px-3 py-1 text-xs font-semibold text-[var(--primary-orange-400)]">
                   {product.purchaseCount}회 구매
                 </span>
               </div>

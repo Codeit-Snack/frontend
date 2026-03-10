@@ -1,6 +1,7 @@
 "use client"
 
 import Pagination from "@/components/ui/pagination"
+import { ProductListAddProductButton } from "./_components/productlist-add-product-button"
 import { ProductListFilters } from "./_components/productlist-filters"
 import { ProductListGrid } from "./_components/productlist-grid"
 import { ProductListHeader } from "./_components/productlist-header"
@@ -24,6 +25,12 @@ export default function ProductListPage() {
     setCategory,
     setSort,
   } = useProducts()
+
+  const handleOpenRegisterModal = () => {
+    // 공용 상품등록 모달 훅/컨텍스트가 준비되면 여기에서 연결.
+    // ex) const { open } = useProductRegisterModal(); open();
+    console.log("open register modal")
+  }
 
   return (
     <main className="px-8 py-10">
@@ -54,15 +61,8 @@ export default function ProductListPage() {
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </section>
+
+      <ProductListAddProductButton onClick={handleOpenRegisterModal} />
     </main>
   )
 }
-
-/*
-1. 헤더 수정
-2. 검색창 유지할지?
-3. 필터 선택 위치 수정
-4. 카테고리 수정(대분류 소분류)
-5. 상품등록 버튼 및 모달 추가
-6. 사이드바 추가
-*/
