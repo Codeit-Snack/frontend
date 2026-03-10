@@ -8,7 +8,6 @@ import { CART_GRID } from "./cart-constants";
 interface CartItemProps {
   id: string;
   image: string;
-  // category: string;
   name: string;
   price: number;
   quantity: number;
@@ -22,7 +21,6 @@ interface CartItemProps {
 export default function CartItem({
   id,
   image,
-  // category,
   name,
   price,
   quantity,

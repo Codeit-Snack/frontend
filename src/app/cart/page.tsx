@@ -35,7 +35,7 @@ export default function CartPage() {
   const toggleItem = (id: string) => setItems((prev) => prev.map((item) => item.id === id ? { ...item, checked: !item.checked } : item));
   const deleteAll = () => setItems([]);
   const deleteSelected = () => setItems((prev) => prev.filter((item) => !item.checked));
-  const changeQuantity = (id: string, quantity: number) =>   // ← 여기 추가
+  const changeQuantity = (id: string, quantity: number) =>   
     setItems((prev) =>
       prev.map((item) => item.id === id ? { ...item, quantity } : item)
     );
