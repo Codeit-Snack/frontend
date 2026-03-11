@@ -23,7 +23,14 @@ export async function getProductRegistrations(
       )
     : [...mockProductRegistrations];
 
-  if (sort === "낮은가격순") {
+  const parseDate = (s: string) => {
+    const [y, m, d] = s.replace(/\s/g, "").split(".").map(Number);
+    return (y ?? 0) * 10000 + (m ?? 0) * 100 + (d ?? 0);
+  };
+
+  if (sort === "최신순") {
+    filtered = [...filtered].sort((a, b) => parseDate(b.registeredAt) - parseDate(a.registeredAt));
+  } else if (sort === "낮은가격순") {
     filtered = [...filtered].sort((a, b) => a.price - b.price);
   } else if (sort === "높은가격순") {
     filtered = [...filtered].sort((a, b) => b.price - a.price);
