@@ -29,7 +29,6 @@ export default function ProductListPage() {
   const handleOpenRegisterModal = () => {
     // 공용 상품등록 모달 훅/컨텍스트가 준비되면 여기에서 연결.
     // ex) const { open } = useProductRegisterModal(); open();
-    console.log("open register modal")
   }
 
   return (

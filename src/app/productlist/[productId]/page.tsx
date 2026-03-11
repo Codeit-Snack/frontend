@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getProductById } from "../_lib/api"
@@ -31,10 +32,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
         <div className="mt-6 overflow-hidden rounded-3xl border border-gray-100 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="aspect-square w-full bg-gray-100">
+            <div className="aspect-square w-full bg-gray-100 relative overflow-hidden">
               {product.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={product.image}
                   alt={product.name}
                   className="h-full w-full object-cover"
