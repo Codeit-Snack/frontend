@@ -71,9 +71,8 @@ export default function ItemRequestModal({
           </DialogClose>
           <DialogClose asChild>
             <Button
-              variant={message.length < 10 ? "solid-disabled" : "solid"}
+              variant="solid"
               className="flex-1 h-[50px] rounded-[12px]"
-              disabled={message.length < 10}
             >
               구매 요청하기
             </Button>
