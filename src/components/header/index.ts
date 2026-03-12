@@ -10,5 +10,5 @@ export {
   AdminHeader,
   SuperAdminHeader,
   CONTENT_PADDING_X,
-} from "./Headers";
-export type { HeaderProps, HeaderDevice, HeaderRole } from "./Headers";
+} from "./headers";
+export type { HeaderProps, HeaderDevice, HeaderRole } from "./headers";

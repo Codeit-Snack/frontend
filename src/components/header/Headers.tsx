@@ -150,9 +150,7 @@ export function LoginHeader({ className = "" }: ClassNameProps) {
   );
 }
 
-export function LoggedInHeader({ className = "" }: ClassNameProps) {
-  return <LoginHeader className={className} />;
-}
+
 
 export function CenterHeader({ className = "" }: ClassNameProps) {
   return (
