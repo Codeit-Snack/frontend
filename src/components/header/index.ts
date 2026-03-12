@@ -2,7 +2,6 @@ export {
   Header,
   LandingHeader,
   LoginHeader,
-  LoggedInHeader,
   CenterHeader,
   FullWidthCenterHeader,
   MobileHeader,
@@ -10,5 +9,5 @@ export {
   AdminHeader,
   SuperAdminHeader,
   CONTENT_PADDING_X,
-} from "./headers";
-export type { HeaderProps, HeaderDevice, HeaderRole } from "./headers";
+} from "./header";
+export type { HeaderProps, HeaderDevice, HeaderRole } from "./header";
