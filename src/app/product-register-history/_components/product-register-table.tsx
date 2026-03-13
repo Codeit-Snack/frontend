@@ -50,7 +50,10 @@ export function ProductRegisterTable({
               <TableRow key={item.id}>
                 <TableCell className="text-gray-700">{item.registeredAt}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Link
+                    href={`/products/${item.id}`}
+                    className="flex items-center gap-3 group"
+                  >
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100">
                       <Image
                         src={item.imageUrl}
@@ -60,8 +63,10 @@ export function ProductRegisterTable({
                         sizes="48px"
                       />
                     </div>
-                    <span className="text-gray-700 truncate">{item.name}</span>
-                  </div>
+                    <span className="text-gray-700 truncate group-hover:text-gray-900 group-hover:underline">
+                      {item.name}
+                    </span>
+                  </Link>
                 </TableCell>
                 <TableCell className="text-gray-600">{item.category}</TableCell>
                 <TableCell className="text-gray-700">
