@@ -2,7 +2,20 @@ import { mockProductRegistrations } from "./mock-data";
 import type {
   GetProductRegistrationsParams,
   GetProductRegistrationsResult,
+  ProductRegistration,
 } from "./types";
+
+export async function getProductRegistrationById(
+  productId: number
+): Promise<ProductRegistration | null> {
+  if (!Number.isFinite(productId)) {
+    return null;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  return (
+    mockProductRegistrations.find((item) => item.id === productId) ?? null
+  );
+}
 
 export async function getProductRegistrations(
   params: GetProductRegistrationsParams = {}
