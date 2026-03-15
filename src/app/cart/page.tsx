@@ -4,7 +4,7 @@ import { useState } from "react";
 import CartItemList from "@/components/cart/cart-item-list";
 import CartSummary from "@/components/cart/cart-summary";
 import type { RequestItem } from "@/components/ui/dialog";
-import { Header } from "@/components/header/header";
+import { Header } from "@/components/header";
 
 const DUMMY_ITEMS = [
   { id: "1", image: "", category: "음료", name: "코카콜라 제로", price: 2000, quantity: 1, shipping: 3000, checked: true },

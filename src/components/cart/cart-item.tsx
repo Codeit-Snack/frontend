@@ -66,7 +66,7 @@ export default function CartItem({
             type="number"
             value={quantity}
             min={1}
-            onChange={(e) => onQuantityChange?.(id, Math.max(1, Number(e.target.value)))}
+            onChange={(e) => onQuantityChange?.(id, Math.max(1, Number(e.target.value) || 1))}
             className="flex-1 text-right text-[18px] font-[400] text-[#E5762C] bg-transparent outline-none w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="text-[#E5762C] text-[18px] font-[400] pr-1">개</span>
