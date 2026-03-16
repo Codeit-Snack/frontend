@@ -37,6 +37,37 @@ export default function ItemRequestModal({
 }: ItemRequestModalProps) {
   const [message, setMessage] = useState("");
 
+  const handleConfirm = () => {
+    const newRequest = {
+      id: crypto.randomUUID(),
+      requestDate: new Date().toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).replace(/\. /g, ".").replace(".", "."),
+      productSummary:
+        items.length === 1
+          ? items[0].name
+          : `${items[0].name} 외 ${items.length - 1}건`,
+      totalQuantity: totalCount,
+      totalAmount: totalPrice,
+      status: "pending",
+      imageUrl: items[0]?.image || "",
+    };
+
+    // 구매 요청 데이터를 localStorage에 저장합니다.
+    // purchase-requests/page.tsx에서 아래 코드로 읽어와 SEED_PURCHASE_REQUESTS와 합쳐주세요.
+    // const stored = JSON.parse(localStorage.getItem("purchaseRequests") ?? "[]");
+    // const [items, setItems] = useState([...stored, ...SEED_PURCHASE_REQUESTS]);
+    const existing = JSON.parse(
+      localStorage.getItem("purchaseRequests") ?? "[]"
+    );
+    localStorage.setItem(
+      "purchaseRequests",
+      JSON.stringify([newRequest, ...existing])
+    );
+  };
+
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -71,9 +102,9 @@ export default function ItemRequestModal({
           </DialogClose>
           <DialogClose asChild>
             <Button
-              variant={message.length < 10 ? "solid-disabled" : "solid"}
+              variant="solid"
               className="flex-1 h-[50px] rounded-[12px]"
-              disabled={message.length < 10}
+              onClick={handleConfirm}
             >
               구매 요청하기
             </Button>
