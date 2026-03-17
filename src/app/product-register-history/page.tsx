@@ -30,7 +30,7 @@ export default function ProductRegisterHistoryPage() {
         role="member"
         cartCount={2}
       />
-      <main className="flex-1 px-8 py-10">
+      <main className="flex-1 bg-[#FBF8F4] px-8 py-10">
         <section className="mx-auto max-w-6xl">
           <ProductRegisterHeader
             sort={sort}
