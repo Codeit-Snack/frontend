@@ -62,7 +62,13 @@ export default function CartItem({
       {/* 수량 */}
       <div className="flex items-center justify-center border-l border-gray-300">
         <div className="flex items-center h-[54px] w-[160px] rounded-[16px] border border-orange-300 bg-gray-50 px-[14px]">
-          <span className="flex-1 text-right text-[18px] font-[400] text-[#E5762C] pr-1">{quantity}</span>
+          <input
+            type="number"
+            value={quantity}
+            min={1}
+            onChange={(e) => onQuantityChange?.(id, Math.max(1, Number(e.target.value) || 1))}
+            className="flex-1 text-right text-[18px] font-[400] text-[#E5762C] bg-transparent outline-none w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
           <span className="text-[#E5762C] text-[18px] font-[400] pr-1">개</span>
           <div className="flex flex-col gap-0.5">
             <button

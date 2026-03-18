@@ -104,7 +104,7 @@ export default function ItemRequestModal({
             <Button
               variant="solid"
               className="flex-1 h-[50px] rounded-[12px]"
-              onClick={handleConfirm}
+
             >
               구매 요청하기
             </Button>
