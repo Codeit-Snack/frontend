@@ -9,6 +9,15 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+function formatWithComma(value: string): string {
+  const digits = value.replace(/\D/g, "")
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
+function parseDigits(value: string): string {
+  return value.replace(/\D/g, "")
+}
+
 type BudgetFormSize = "md" | "sm"
 
 export const BudgetForm = ({
@@ -45,11 +54,8 @@ export const BudgetForm = ({
             <Input
               id="monthly-budget"
               placeholder="3,500,000"
-              value={budgetValue}
-              onChange={(e) => {
-                const next = e.target.value
-                setBudgetValue(next)
-              }}
+              value={formatWithComma(budgetValue)}
+              onChange={(e) => setBudgetValue(parseDigits(e.target.value))}
               className={cn(inputSizeClass, budgetValue.trim() && activeInputClass)}
             />
           </div>
@@ -60,11 +66,8 @@ export const BudgetForm = ({
             <Input
               id="start-monthly-budget"
               placeholder="3,000,000"
-              value={startBudgetValue}
-              onChange={(e) => {
-                const next = e.target.value
-                setStartBudgetValue(next)
-              }}
+              value={formatWithComma(startBudgetValue)}
+              onChange={(e) => setStartBudgetValue(parseDigits(e.target.value))}
               className={cn(inputSizeClass, startBudgetValue.trim() && activeInputClass)}
             />
           </div>
