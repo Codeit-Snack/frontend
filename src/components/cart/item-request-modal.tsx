@@ -96,15 +96,14 @@ export default function ItemRequestModal({
         </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outlined" className="flex-1 h-[50px] rounded-[12px]">
+            <Button variant="outlined" className="flex-1 h-[50px] rounded-[12px] cursor-pointer active:scale-95 transition-transform">
               취소
             </Button>
           </DialogClose>
           <DialogClose asChild>
             <Button
               variant="solid"
-              className="flex-1 h-[50px] rounded-[12px]"
-
+              className="flex-1 h-[50px] rounded-[12px] cursor-pointer active:scale-95 transition-transform"
             >
               구매 요청하기
             </Button>
