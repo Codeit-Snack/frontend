@@ -6,7 +6,6 @@ import { ExternalLink } from "lucide-react";
 import type { ProductRegistration } from "../_lib/types";
 import {
   Table,
-  TableSection,
   TableHeader,
   TableBody,
   TableRow,
@@ -29,25 +28,35 @@ export function ProductRegisterTable({
   loading = false,
 }: ProductRegisterTableProps) {
   return (
-    <TableSection>
-      <Table>
-        <TableHeader>
+    <div className="mt-6">
+      <Table className="border-separate border-spacing-0">
+        <TableHeader className="overflow-hidden rounded-t-[2rem] rounded-b-[2rem] border border-[#E0E0E0] bg-[#FFFFFF]">
           <tr className="text-left text-sm text-gray-500">
-            <TableHead className="w-[140px]">등록일</TableHead>
-            <TableHead>상품명</TableHead>
-            <TableHead className="w-[160px]">카테고리</TableHead>
-            <TableHead className="w-[120px]">가격</TableHead>
-            <TableHead className="w-[180px]">제품 링크</TableHead>
+            <TableHead className="w-[140px] rounded-l-[2rem] border-t border-l border-b border-[#E0E0E0]">
+              등록일
+            </TableHead>
+            <TableHead className="w-[200px] min-w-0 border-t border-b border-[#E0E0E0]">
+              상품명
+            </TableHead>
+            <TableHead className="w-[160px] border-t border-b border-[#E0E0E0]">
+              카테고리
+            </TableHead>
+            <TableHead className="w-[120px] border-t border-b border-[#E0E0E0]">
+              가격
+            </TableHead>
+            <TableHead className="w-[180px] rounded-r-[2rem] border-t border-r border-b border-[#E0E0E0]">
+              제품 링크
+            </TableHead>
           </tr>
         </TableHeader>
-        <TableBody>
+        <TableBody className="bg-[#FBF8F4]">
           {loading ? (
             <TableEmpty colSpan={5}>상품 정보를 불러오는 중입니다.</TableEmpty>
           ) : items.length === 0 ? (
             <TableEmpty colSpan={5}>조회된 상품이 없습니다.</TableEmpty>
           ) : (
             items.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow key={item.id} className="border-t border-[#E0E0E0]">
                 <TableCell className="text-gray-700">{item.registeredAt}</TableCell>
                 <TableCell>
                   <Link
@@ -88,6 +97,6 @@ export function ProductRegisterTable({
           )}
         </TableBody>
       </Table>
-    </TableSection>
+    </div>
   );
 }
