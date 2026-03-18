@@ -53,7 +53,7 @@ export default function CartItem({
         </div>
         <button
           onClick={() => onDelete?.(id)}
-          className="flex-shrink-0 self-start w-[36px] h-[36px] flex items-center justify-center"
+          className="flex-shrink-0 self-start w-[36px] h-[36px] flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
         >
           <X size={36} className="text-gray-400 hover:text-gray-700" />
         </button>
@@ -73,7 +73,7 @@ export default function CartItem({
           <div className="flex flex-col gap-0.5">
             <button
               onClick={() => onQuantityChange?.(id, quantity + 1)}
-              className="flex items-center justify-center text-[#E5762C] hover:text-[#d06820]"
+              className="flex items-center justify-center text-[#E5762C] hover:text-[#d06820] cursor-pointer active:scale-90 transition-transform"
             >
               <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
                 <path d="M5 0L10 6H0L5 0Z"/>
@@ -81,7 +81,7 @@ export default function CartItem({
             </button>
             <button
               onClick={() => onQuantityChange?.(id, Math.max(1, quantity - 1))}
-              className="flex items-center justify-center text-[#E5762C] hover:text-[#d06820]"
+              className="flex items-center justify-center text-[#E5762C] hover:text-[#d06820] cursor-pointer active:scale-90 transition-transform"
             >
               <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
                 <path d="M5 6L0 0H10L5 6Z"/>
@@ -98,7 +98,7 @@ export default function CartItem({
         </p>
         <Button 
           variant="solid" 
-          className="text-[18px] font-[600] px-8 py-3 rounded-full h-auto w-auto"
+          className="text-[18px] font-[600] px-8 py-3 rounded-full h-auto w-auto cursor-pointer active:scale-95 transition-transform"
         >
           즉시 요청
         </Button>

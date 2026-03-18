@@ -22,6 +22,7 @@ export default function CartPage() {
   const totalShipping = checkedItems.reduce((sum, item) => sum + item.shipping, 0);
   const totalPrice = totalProductPrice + totalShipping;
   const totalCount = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
@@ -61,6 +62,7 @@ export default function CartPage() {
             onDeleteAll={deleteAll}
             onDeleteSelected={deleteSelected}
             onQuantityChange={changeQuantity}
+            onDeleteItem={deleteItem}
           />
           <CartSummary
             checkedCount={checkedItems.length}
