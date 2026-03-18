@@ -44,7 +44,7 @@ export default function ItemRequestModal({
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-      }).replace(/\. /g, ".").replace(".", "."),
+      }).replace(/\. /g, ".").replace(/\.$/, ""),
       productSummary:
         items.length === 1
           ? items[0].name
