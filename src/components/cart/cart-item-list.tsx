@@ -24,6 +24,7 @@ interface CartItemListProps {
   onDeleteAll: () => void;
   onDeleteSelected: () => void;
   onQuantityChange: (id: string, quantity: number) => void;
+  onDeleteItem: (id: string) => void;
 }
 
 export default function CartItemList({
@@ -34,6 +35,7 @@ export default function CartItemList({
   onDeleteAll,
   onDeleteSelected,
   onQuantityChange,
+  onDeleteItem,
 }: CartItemListProps) {
   return (
     <div className="flex-1">
@@ -67,6 +69,7 @@ export default function CartItemList({
             {...item}
             onToggle={onToggleItem}
             onQuantityChange={onQuantityChange}
+            onDelete={onDeleteItem}
           />
         ))}
       </div>
@@ -75,13 +78,13 @@ export default function CartItemList({
       <div className="flex gap-4 mt-6">
         <button
           onClick={onDeleteAll}
-          className="w-[139px] h-[50px] px-[18px] py-[12px] rounded-full border border-gray-200 bg-transparent text-sm text-gray-500 hover:bg-gray-50"
+          className="w-[139px] h-[50px] px-[18px] py-[12px] rounded-full border border-gray-200 bg-transparent text-sm text-gray-500 hover:bg-gray-50 cursor-pointer active:scale-95 transition-transform"
         >
           전체 상품 삭제
         </button>
         <button
           onClick={onDeleteSelected}
-          className="w-[139px] h-[50px] px-[18px] py-[12px] rounded-full border border-gray-200 bg-transparent text-sm text-gray-500 hover:bg-gray-50"
+          className="w-[139px] h-[50px] px-[18px] py-[12px] rounded-full border border-gray-200 bg-transparent text-sm text-gray-500 hover:bg-gray-50 cursor-pointer active:scale-95 transition-transform"
         >
           선택 상품 삭제
         </button>
