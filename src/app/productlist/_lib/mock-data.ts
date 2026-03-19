@@ -4,7 +4,7 @@ export const mockProducts: Product[] = [
   {
     id: 101,
     image: "https://picsum.photos/seed/snack-101/600/600",
-    category: "탄산음료",
+    category: "청량/탄산음료",
     purchaseCount: 29,
     name: "코카콜라 제로",
     price: 2000,
@@ -12,7 +12,7 @@ export const mockProducts: Product[] = [
   {
     id: 102,
     image: "https://picsum.photos/seed/snack-102/600/600",
-    category: "청량음료",
+    category: "청량/탄산음료",
     purchaseCount: 18,
     name: "스프라이트",
     price: 1900,
@@ -36,7 +36,7 @@ export const mockProducts: Product[] = [
   {
     id: 105,
     image: "https://picsum.photos/seed/snack-105/600/600",
-    category: "물 · 이온음료",
+    category: "이온음료",
     purchaseCount: 33,
     name: "생수 500ml",
     price: 900,
@@ -44,7 +44,7 @@ export const mockProducts: Product[] = [
   {
     id: 106,
     image: "https://picsum.photos/seed/snack-106/600/600",
-    category: "물 · 이온음료",
+    category: "이온음료",
     purchaseCount: 22,
     name: "포카리 스웨트",
     price: 1700,
@@ -52,7 +52,7 @@ export const mockProducts: Product[] = [
   {
     id: 107,
     image: "https://picsum.photos/seed/snack-107/600/600",
-    category: "과자 · 스낵",
+    category: "과자",
     purchaseCount: 55,
     name: "포카칩 오리지널",
     price: 1800,
@@ -60,7 +60,7 @@ export const mockProducts: Product[] = [
   {
     id: 108,
     image: "https://picsum.photos/seed/snack-108/600/600",
-    category: "과자 · 스낵",
+    category: "과자",
     purchaseCount: 27,
     name: "홈런볼",
     price: 2500,
@@ -68,7 +68,7 @@ export const mockProducts: Product[] = [
   {
     id: 109,
     image: "https://picsum.photos/seed/snack-109/600/600",
-    category: "과자 · 스낵",
+    category: "과자",
     purchaseCount: 31,
     name: "프레첼 소금맛",
     price: 2200,
@@ -76,7 +76,7 @@ export const mockProducts: Product[] = [
   {
     id: 110,
     image: "https://picsum.photos/seed/snack-110/600/600",
-    category: "쿠키 · 베이커리",
+    category: "쿠키",
     purchaseCount: 16,
     name: "초코칩 쿠키",
     price: 2800,
@@ -84,7 +84,7 @@ export const mockProducts: Product[] = [
   {
     id: 111,
     image: "https://picsum.photos/seed/snack-111/600/600",
-    category: "쿠키 · 베이커리",
+    category: "쿠키",
     purchaseCount: 9,
     name: "버터 크루아상",
     price: 3200,
@@ -92,7 +92,7 @@ export const mockProducts: Product[] = [
   {
     id: 112,
     image: "https://picsum.photos/seed/snack-112/600/600",
-    category: "초콜릿 · 캔디",
+    category: "초콜릿류",
     purchaseCount: 48,
     name: "밀크 초콜릿 바",
     price: 1200,
@@ -100,7 +100,7 @@ export const mockProducts: Product[] = [
   {
     id: 113,
     image: "https://picsum.photos/seed/snack-113/600/600",
-    category: "초콜릿 · 캔디",
+    category: "초콜릿류",
     purchaseCount: 21,
     name: "민트 캔디",
     price: 1000,
@@ -108,7 +108,7 @@ export const mockProducts: Product[] = [
   {
     id: 114,
     image: "https://picsum.photos/seed/snack-114/600/600",
-    category: "라면 · 간편식",
+    category: "컵라면",
     purchaseCount: 12,
     name: "컵라면 매운맛",
     price: 1700,
@@ -116,7 +116,7 @@ export const mockProducts: Product[] = [
   {
     id: 115,
     image: "https://picsum.photos/seed/snack-115/600/600",
-    category: "라면 · 간편식",
+    category: "컵라면",
     purchaseCount: 7,
     name: "컵라면 순한맛",
     price: 1600,
@@ -124,7 +124,7 @@ export const mockProducts: Product[] = [
   {
     id: 116,
     image: "https://picsum.photos/seed/snack-116/600/600",
-    category: "견과 · 건강간식",
+    category: "견과류",
     purchaseCount: 19,
     name: "아몬드 30g",
     price: 2000,
@@ -132,7 +132,7 @@ export const mockProducts: Product[] = [
   {
     id: 117,
     image: "https://picsum.photos/seed/snack-117/600/600",
-    category: "견과 · 건강간식",
+    category: "견과류",
     purchaseCount: 11,
     name: "그래놀라 바",
     price: 2400,
@@ -140,7 +140,7 @@ export const mockProducts: Product[] = [
   {
     id: 118,
     image: "https://picsum.photos/seed/snack-118/600/600",
-    category: "아이스크림 · 디저트",
+    category: "요거트류",
     purchaseCount: 26,
     name: "바닐라 아이스크림",
     price: 2500,
@@ -148,7 +148,7 @@ export const mockProducts: Product[] = [
   {
     id: 119,
     image: "https://picsum.photos/seed/snack-119/600/600",
-    category: "아이스크림 · 디저트",
+    category: "요거트류",
     purchaseCount: 15,
     name: "초코 아이스크림",
     price: 2700,
@@ -172,7 +172,7 @@ export const mockProducts: Product[] = [
   {
     id: 122,
     image: "https://picsum.photos/seed/snack-122/600/600",
-    category: "차",
+    category: "차류",
     purchaseCount: 17,
     name: "말차 라떼",
     price: 2100,
@@ -180,7 +180,7 @@ export const mockProducts: Product[] = [
   {
     id: 123,
     image: "https://picsum.photos/seed/snack-123/600/600",
-    category: "차",
+    category: "차류",
     purchaseCount: 6,
     name: "카모마일 티",
     price: 2300,
@@ -188,7 +188,7 @@ export const mockProducts: Product[] = [
   {
     id: 124,
     image: "https://picsum.photos/seed/snack-124/600/600",
-    category: "과자 · 스낵",
+    category: "과자",
     purchaseCount: 38,
     name: "팝콘 버터맛",
     price: 1600,

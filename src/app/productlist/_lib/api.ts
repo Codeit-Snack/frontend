@@ -1,3 +1,4 @@
+import { SUB_CATEGORIES } from "@/data/categories"
 import { mockProducts } from "./mock-data"
 import type { GetProductsParams, GetProductsResult, Product, SortOption } from "./types"
 
@@ -28,6 +29,7 @@ export async function getProducts(
   const {
     keyword = "",
     category,
+    categoryId,
     sort = "latest",
     page = 1,
     pageSize = 12,
@@ -41,9 +43,17 @@ export async function getProducts(
       )
     : mockProducts
 
-  const filtered = category
-    ? filteredByKeyword.filter((product) => product.category === category)
-    : filteredByKeyword
+  let filtered = filteredByKeyword
+  if (category) {
+    filtered = filteredByKeyword.filter((product) => product.category === category)
+  } else if (categoryId) {
+    const subNames = new Set(
+      SUB_CATEGORIES.filter((s) => s.categoryId === categoryId).map((s) => s.name),
+    )
+    filtered = filteredByKeyword.filter((product) =>
+      subNames.has(product.category),
+    )
+  }
 
   const sorted = sortProducts(filtered, sort)
 
