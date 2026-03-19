@@ -31,7 +31,7 @@ export function ConfirmCancelModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px] p-8 sm:max-w-[90vw]">
+      <DialogContent className="max-w-[400px] p-8 sm:max-w-[640px]">
         <DialogHeader className="flex flex-col items-center text-center">
           <div className="relative mb-4 flex justify-center">
             <div className="relative h-[120px] w-[140px]">
@@ -53,12 +53,15 @@ export function ConfirmCancelModal({
               </div>
             </div>
           </div>
-          <DialogTitle className="text-xl font-bold text-gray-900">
+          <DialogTitle className="mb-6 font-[Pretendard] text-[24px] font-bold leading-[32px] text-[var(--black-black-400,#1F1F1F)]">
             구매 요청 취소
           </DialogTitle>
-          <div className="mt-2 space-y-1 text-sm text-gray-600" id="cancel-modal-desc">
-            <p>{productSummary} 구매 요청을 취소하시겠어요?</p>
-            <p className="font-medium text-gray-700">
+          <div className="mt-2 space-y-1 text-center font-[Pretendard] text-[20px] font-medium leading-[32px]" id="cancel-modal-desc">
+            <p>
+              <span className="text-[var(--black-black-100,#6B6B6B)]">{productSummary}</span>
+              <span className="text-[var(--gray-gray-400,#ABABAB)]"> 구매 요청을 취소하시겠어요?</span>
+            </p>
+            <p className="text-[var(--gray-gray-400,#ABABAB)]">
               구매 요청 취소 후에는 복구할 수 없어요!
             </p>
           </div>
@@ -66,22 +69,22 @@ export function ConfirmCancelModal({
             {productSummary} 구매 요청을 취소하시겠어요? 구매 요청 취소 후에는 복구할 수 없어요.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button
-            type="button"
-            variant="solid"
-            className="!h-12 !min-w-[140px] !rounded-lg order-2 sm:order-1"
-            onClick={handleConfirm}
-          >
-            취소할래요
-          </Button>
+        <DialogFooter className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
           <Button
             type="button"
             variant="outlined"
-            className="!h-12 !min-w-[140px] !rounded-lg order-1 sm:order-2"
+            className="order-1 flex !h-16 !w-[280px] shrink-0 items-center justify-center !rounded-lg !border-0 !border-2 !border-transparent !p-4 text-center font-[Pretendard] !text-[20px] !font-semibold !leading-[32px] !text-[var(--primary-orange-400,#F97B22)] !bg-orange-50 hover:!border-[var(--primary-orange-400,#F97B22)] hover:!bg-transparent"
             onClick={() => onOpenChange(false)}
           >
             더 생각해볼게요
+          </Button>
+          <Button
+            type="button"
+            variant="solid"
+            className="order-2 flex !h-16 !w-[280px] shrink-0 items-center justify-center !rounded-lg !p-4 text-center font-[Pretendard] !text-[20px] !font-semibold !leading-[32px] !text-[var(--gray-gray-50,#FFF)]"
+            onClick={handleConfirm}
+          >
+            취소할래요
           </Button>
         </DialogFooter>
       </DialogContent>

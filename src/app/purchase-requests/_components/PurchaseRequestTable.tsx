@@ -11,6 +11,10 @@ const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
   approved: "승인 완료",
 };
 
+/** thead th 공통: Pretendard 20px medium, line-height 32px, Black-100, center */
+const TH_STYLE =
+  "text-center font-medium font-[Pretendard] text-[20px] leading-[32px] text-[var(--black-black-100,#6B6B6B)]";
+
 interface PurchaseRequestTableProps {
   items: PurchaseRequestItem[];
   onCancelRequest: (item: PurchaseRequestItem) => void;
@@ -25,18 +29,53 @@ export function PurchaseRequestTable({
   return (
     <div
       className={cn(
-        "overflow-x-auto rounded-lg border border-[var(--gray-gray-200)] bg-white",
+        "overflow-x-auto",
         className
       )}
     >
-      <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+      <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left text-sm">
         <thead>
-          <tr className="border-b border-[var(--gray-gray-200)] bg-[var(--gray-gray-50)]">
-            <th className="px-4 py-3 font-medium text-gray-900">구매요청일</th>
-            <th className="px-4 py-3 font-medium text-gray-900">상품정보</th>
-            <th className="px-4 py-3 font-medium text-gray-900">주문 금액</th>
-            <th className="px-4 py-3 font-medium text-gray-900">상태</th>
-            <th className="w-24 px-4 py-3 font-medium text-gray-900">비고</th>
+          <tr>
+            <th
+              className={cn(
+                TH_STYLE,
+                "w-60 pl-[80px] pr-[40px] pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-l border-[var(--gray-gray-200)] first:rounded-l-full"
+              )}
+            >
+              구매요청일
+            </th>
+            <th
+              className={cn(
+                TH_STYLE,
+                "px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-[var(--gray-gray-200)]"
+              )}
+            >
+              상품정보
+            </th>
+            <th
+              className={cn(
+                TH_STYLE,
+                "px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-[var(--gray-gray-200)]"
+              )}
+            >
+              주문 금액
+            </th>
+            <th
+              className={cn(
+                TH_STYLE,
+                "px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-[var(--gray-gray-200)]"
+              )}
+            >
+              상태
+            </th>
+            <th
+              className={cn(
+                TH_STYLE,
+                "w-24 px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-r border-[var(--gray-gray-200)] last:rounded-r-full pr-[80px]"
+              )}
+            >
+              비고
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -45,41 +84,49 @@ export function PurchaseRequestTable({
             return (
               <tr
                 key={item.id}
-                className="border-b border-[var(--gray-gray-100)] last:border-b-0"
+                className="[&>td]:border-b [&>td]:line_line_200_l last:[&>td]:border-b-0"
               >
-                <td className="px-4 py-3 text-gray-700">{item.requestDate}</td>
-                <td className="px-4 py-3">
-                  <div className="text-gray-900">{item.productSummary}</div>
-                  <div className="text-gray-500">총 수량: {item.totalQuantity}개</div>
+                <td className="w-28 min-w-0 pl-[80px] pr-[40px] py-6 text-center font-[Pretendard] text-[20px] font-normal leading-[32px] text-[var(--black-black-100,#6B6B6B)]">
+                  {item.requestDate}
                 </td>
-                <td className="px-4 py-3 text-gray-700">
+                <td className="px-4 py-6 text-left">
+                  <div className="font-[Pretendard] text-[20px] font-semibold leading-[32px] text-[var(--black-black-200,#525252)]">
+                    {item.productSummary}
+                  </div>
+                  <div className="font-[Pretendard] text-[14px] font-medium leading-[24px] text-[var(--gray-gray-500,#999)]">
+                    총 수량: {item.totalQuantity}개
+                  </div>
+                </td>
+                <td className="px-4 py-6 text-center font-[Pretendard] text-[20px] font-normal leading-[32px] text-[var(--black-black-100,#6B6B6B)]">
                   {item.totalAmount.toLocaleString()}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-6 text-center">
                   <span
                     className={cn(
-                      "inline-block rounded-full px-2.5 py-0.5 text-xs font-medium",
-                      item.status === "pending" && "bg-[#FDF0DF] text-[#E5762C]",
-                      item.status === "rejected" && "bg-gray-100 text-gray-600",
-                      item.status === "approved" && "bg-gray-100 text-gray-700"
+                      "inline-block rounded-full px-2.5 py-0.5 text-center font-[Pretendard] text-[20px] font-normal leading-[32px]",
+                      item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
+                      (item.status === "rejected" || item.status === "approved") &&
+                        "text-[var(--gray-gray-300,#C4C4C4)]"
                     )}
                   >
                     {STATUS_LABEL[item.status]}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="whitespace-nowrap px-4 py-6 pr-[80px] text-center">
                   {canCancel ? (
                     <Button
                       type="button"
                       variant="outlined"
                       size="etc-sm"
-                      className="!h-8 !rounded-lg"
+                      className="!h-8 !min-w-0 !w-auto !rounded-lg !px-4 !py-2 font-[Pretendard] !text-[18px] !font-semibold !leading-[26px] !text-[var(--primary-orange-400,#F97B22)]"
                       onClick={() => onCancelRequest(item)}
                     >
                       요청 취소
                     </Button>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span className="inline-block font-[Pretendard] text-[18px] font-semibold leading-[26px] text-gray-400">
+                      -
+                    </span>
                   )}
                 </td>
               </tr>
