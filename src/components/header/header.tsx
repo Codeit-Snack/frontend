@@ -81,23 +81,23 @@ export interface HeaderProps {
 
 const NAV_BY_ROLE: Record<HeaderRole, { label: string; href: string; icon: React.ElementType }[]> = {
   member: [
-    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "상품 리스트", href: "/productlist", icon: Package },
     { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
-    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+    { label: "상품 등록 내역", href: "/product-register-history", icon: ShoppingBag },
   ],
   admin: [
-    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "상품 리스트", href: "/productlist", icon: Package },
     { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
     { label: "구매 요청 관리", href: "/admin/purchase-manage", icon: ClipboardList },
     { label: "구매 내역 확인", href: "/admin/purchase-history", icon: FileText },
-    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+    { label: "상품 등록 내역", href: "/product-register-history", icon: ShoppingBag },
   ],
   superAdmin: [
-    { label: "상품 리스트", href: "/products", icon: Package },
+    { label: "상품 리스트", href: "/productlist", icon: Package },
     { label: "구매 요청 내역", href: "/purchase-requests", icon: ClipboardList },
     { label: "구매 요청 관리", href: "/admin/purchase-manage", icon: ClipboardList },
     { label: "구매 내역 확인", href: "/admin/purchase-history", icon: FileText },
-    { label: "상품 등록 내역", href: "/product-register", icon: ShoppingBag },
+    { label: "상품 등록 내역", href: "/product-register-history", icon: ShoppingBag },
     { label: "관리", href: "/admin", icon: FileText },
   ],
 };
@@ -190,7 +190,7 @@ export function MobileHeader({
   return (
     <header
       className={cn(
-        "bg-white border-b border-gray-200",
+        "background_background_400_b border-b border-gray-200",
         HEADER_HEIGHT_CLASS,
         "px-6",
         className
@@ -213,7 +213,7 @@ export function MobileHeader({
               aria-hidden
               onClick={() => setOpen(false)}
             />
-            <div className="fixed top-0 left-0 z-50 h-full w-[280px] max-w-[85vw] bg-white shadow-lg flex flex-col">
+            <div className="fixed top-0 left-0 z-50 h-full w-[280px] max-w-[85vw] background_background_400_b shadow-lg flex flex-col">
               {/* 상단 우측 닫기 버튼 */}
               <div className="flex justify-end p-4">
                 <button
@@ -314,7 +314,7 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
   const pathname = usePathname();
   const items = NAV_BY_ROLE.member;
   return (
-    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+    <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center">
@@ -367,7 +367,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
   const pathname = usePathname();
   const items = NAV_BY_ROLE.admin;
   return (
-    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+    <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center shrink-0">
@@ -420,7 +420,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
   const pathname = usePathname();
   const items = NAV_BY_ROLE.superAdmin;
   return (
-    <header className={cn("bg-white border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
+    <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
           <Link href="/" className="flex items-center shrink-0">
