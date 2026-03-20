@@ -69,7 +69,7 @@ export function ConfirmCancelModal({
             {productSummary} 구매 요청을 취소하시겠어요? 구매 요청 취소 후에는 복구할 수 없어요.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
+        <DialogFooter className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button
             type="button"
             variant="outlined"

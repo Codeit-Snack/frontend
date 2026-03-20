@@ -11,6 +11,11 @@ const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
   approved: "승인 완료",
 };
 
+/** 날짜를 "2024. 07. 04" 형식으로 */
+function formatDateDisplay(dateStr: string) {
+  return dateStr.replace(/\./g, ". ");
+}
+
 interface PurchaseRequestCardProps {
   item: PurchaseRequestItem;
   onCancelRequest: (item: PurchaseRequestItem) => void;
@@ -27,63 +32,94 @@ export function PurchaseRequestCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-b border-[var(--gray-gray-100)] py-4 last:border-b-0",
+        "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0",
         className
       )}
     >
-      <div className="flex gap-3">
-        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+      {/* 상단: 상품 정보 + 요청 취소 버튼 */}
+      <div className="flex items-start gap-3 mb-6">
+        <div className="relative h-[80px] w-[80px] shrink-0 overflow-hidden rounded-[8px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white p-4">
           {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
+            <div className="flex h-full w-full items-center justify-center">
+              <Image
+                src={item.imageUrl}
+                alt=""
+                width={32}
+                height={32}
+                className="h-full w-full object-contain object-center"
+                unoptimized
+              />
+            </div>
           ) : (
-            <div className="h-full w-full bg-gray-200" />
+            <div className="h-full w-full bg-[var(--gray-gray-100)]" />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-gray-900">{item.productSummary}</p>
-          <p className="text-sm text-gray-500">총 수량: {item.totalQuantity}개</p>
-          {canCancel && (
-            <div className="mt-2 flex justify-end">
-              <Button
-                type="button"
-                variant="outlined"
-                size="etc-sm"
-                className="!h-8 !rounded-lg"
-                onClick={() => onCancelRequest(item)}
-              >
-                요청 취소
-              </Button>
-            </div>
-          )}
+          <p className="font-[Pretendard] text-[16px] font-semibold leading-[24px] text-[var(--black-black-200,#525252)]">
+            {item.productSummary}
+          </p>
+          <p className="mt-0.5 font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--gray-gray-500,#999)]">
+            총 수량: {item.totalQuantity}개
+          </p>
         </div>
+        {canCancel ? (
+          <Button
+            type="button"
+            variant="outlined"
+            size="etc-sm"
+            className="!h-9 !min-w-0 shrink-0 self-end !rounded-lg !border-[var(--primary-orange-400,#F97B22)] !px-3 font-[Pretendard] !text-[14px] !font-semibold !leading-[20px] !text-[var(--primary-orange-400,#F97B22)]"
+            onClick={() => onCancelRequest(item)}
+          >
+            요청 취소
+          </Button>
+        ) : (
+          <span className="shrink-0 font-[Pretendard] text-[14px] font-semibold leading-[20px] text-[var(--gray-gray-400,#ABABAB)]">
+            -
+          </span>
+        )}
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-gray-500">주문금액</dt>
-        <dd className="font-medium text-gray-900">
+
+ 
+
+      {/* 주문금액 */}
+      <div className="flex items-center justify-between">
+        <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
+          주문금액
+        </span>
+        <span className="font-[Pretendard] text-[16px] font-bold leading-[24px] text-[var(--black-black-400,#1F1F1F)]">
           {item.totalAmount.toLocaleString()}원
-        </dd>
-        <dt className="text-gray-500">구매요청일</dt>
-        <dd className="text-gray-700">{item.requestDate}</dd>
-        <dt className="text-gray-500">상태</dt>
-        <dd>
+        </span>
+      </div>
+
+      {/* 구분선 */}
+      <div className="my-4 border-t border-[var(--gray-gray-200)]" />
+
+      {/* 구매요청일 / 상태 */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
+            구매요청일
+          </span>
+          <span className="font-[Pretendard] text-[14px] font-normal leading-[22px] text-[var(--gray-gray-500,#999)]">
+            {formatDateDisplay(item.requestDate)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
+            상태
+          </span>
           <span
             className={cn(
-              "inline-block rounded-full px-2.5 py-0.5 text-xs font-medium",
-              item.status === "pending" && "bg-[#FDF0DF] text-[#E5762C]",
-              item.status === "rejected" && "bg-gray-100 text-gray-600",
-              item.status === "approved" && "bg-gray-100 text-gray-700"
+              "font-[Pretendard] text-[14px] font-normal leading-[22px]",
+              item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
+              (item.status === "rejected" || item.status === "approved") &&
+                "text-[var(--gray-gray-400,#ABABAB)]"
             )}
           >
             {STATUS_LABEL[item.status]}
           </span>
-        </dd>
-      </dl>
+        </div>
+      </div>
     </div>
   );
 }
