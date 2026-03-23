@@ -13,7 +13,7 @@ const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
 
 /** 날짜를 "2024. 07. 04" 형식으로 */
 function formatDateDisplay(dateStr: string) {
-  return dateStr.replace(/\./g, ". ");
+  return dateStr.replace(/\.\s*/g, ". ");
 }
 
 interface PurchaseRequestCardProps {
@@ -33,7 +33,7 @@ export function PurchaseRequestCard({
     <div
       className={cn(
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0",
-        className
+        className,
       )}
     >
       {/* 상단: 상품 정보 + 요청 취소 버튼 */}
@@ -79,8 +79,6 @@ export function PurchaseRequestCard({
         )}
       </div>
 
- 
-
       {/* 주문금액 */}
       <div className="flex items-center justify-between">
         <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
@@ -111,9 +109,10 @@ export function PurchaseRequestCard({
           <span
             className={cn(
               "font-[Pretendard] text-[14px] font-normal leading-[22px]",
-              item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
+              item.status === "pending" &&
+                "text-[var(--black-black-100,#6B6B6B)]",
               (item.status === "rejected" || item.status === "approved") &&
-                "text-[var(--gray-gray-400,#ABABAB)]"
+                "text-[var(--gray-gray-400,#ABABAB)]",
             )}
           >
             {STATUS_LABEL[item.status]}
