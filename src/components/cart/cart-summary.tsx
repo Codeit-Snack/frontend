@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { type RequestItem } from "@/components/ui/dialog";
 import ItemRequestModal from "./item-request-modal";
+import { useRouter } from "next/navigation";
 
 interface CartSummaryProps {
   checkedCount: number;
@@ -21,6 +22,9 @@ export default function CartSummary({
   totalCount,
   requestItems,
 }: CartSummaryProps) {
+  const router = useRouter();
+
+
   return (
     <div className="w-[386px] flex-shrink-0 flex flex-col">
       {/* 주문 요약 박스 */}
@@ -55,12 +59,16 @@ export default function CartSummary({
           totalCount={totalCount}
           totalPrice={totalPrice}
           trigger={
-            <Button variant="solid" className="py-4 h-auto w-full rounded-[16px] text-[20px] font-[600]">
+            <Button variant="solid" className="py-4 h-auto w-full rounded-[16px] text-[20px] font-[600] cursor-pointer active:scale-95 transition-transform">
               구매 요청
             </Button>
           }
         />
-        <Button variant="invite" className="py-4 h-auto text-[20px] font-[600] w-full justify-center rounded-[16px] bg-[#FDF0DF]">
+        <Button
+          variant="invite"
+          className="py-4 h-auto text-[20px] font-[600] w-full justify-center rounded-[16px] bg-[#FDF0DF] cursor-pointer active:scale-95 transition-transform"
+          onClick={() => router.push("/productlist")}
+        >
           계속 쇼핑하기
         </Button>
       </div>

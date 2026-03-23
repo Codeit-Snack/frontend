@@ -4,6 +4,7 @@ import { useState } from "react";
 import CartItemList from "@/components/cart/cart-item-list";
 import CartSummary from "@/components/cart/cart-summary";
 import type { RequestItem } from "@/components/ui/dialog";
+import { Header } from "@/components/header";
 
 const DUMMY_ITEMS = [
   { id: "1", image: "", category: "음료", name: "코카콜라 제로", price: 2000, quantity: 1, shipping: 3000, checked: true },
@@ -21,6 +22,7 @@ export default function CartPage() {
   const totalShipping = checkedItems.reduce((sum, item) => sum + item.shipping, 0);
   const totalPrice = totalProductPrice + totalShipping;
   const totalCount = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
@@ -42,8 +44,12 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-[#FBF8F4] min-w-[1280px]">
-      {/* 헤더 자리 */}
-      <header className="h-[80px] bg-white border-b border-gray-200" />
+      <Header
+        device="pc"
+        isLoggedIn={true}
+        role="member"
+        cartCount={items.length}
+      />
 
       <div className="max-w-[1920px] mx-auto py-10 px-[120px] overflow-x-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">장바구니</h1>
@@ -56,6 +62,7 @@ export default function CartPage() {
             onDeleteAll={deleteAll}
             onDeleteSelected={deleteSelected}
             onQuantityChange={changeQuantity}
+            onDeleteItem={deleteItem}
           />
           <CartSummary
             checkedCount={checkedItems.length}
