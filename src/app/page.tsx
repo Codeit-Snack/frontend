@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { LandingHeader } from "@/components/header"
 
 const bubbleTexts = [
   "쉽고 빠르게 구매를 요청해보세요",
@@ -30,32 +31,24 @@ function SpeechBubble({
 export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#FDF0DF]">
-      <header className="absolute left-0 top-0 z-20 h-[54px] w-full bg-[#F97B22] md:h-[64px] lg:h-[88px]">
-        <div className="mx-auto flex h-full w-full max-w-[1920px] items-center justify-between px-6 md:px-12 xl:px-[120px]">
-          <span className="font-[var(--font-snack-logo)] text-[24px] font-extrabold text-white">
-            Snack
-          </span>
-
-          <div className="hidden items-center gap-3 md:flex md:gap-4">
-            <Link
-              href="/login"
-              className="text-xs font-semibold text-white transition-opacity hover:opacity-80 md:text-sm"
-            >
-              로그인
-            </Link>
-            <Link
-              href="/signup/super-admin"
-              className="text-xs font-semibold text-white transition-opacity hover:opacity-80 md:text-sm"
-            >
-              기업 담당자 회원가입
-            </Link>
-          </div>
-        </div>
-      </header>
+      <LandingHeader
+        className="absolute left-0 top-0 z-20 w-full"
+        actions={[
+          { href: "/login", label: "로그인" },
+          { href: "/signup/super-admin", label: "기업담당자 회원가입" },
+        ]}
+      />
 
       <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1920px] flex-col items-center px-6 pb-[38vh] pt-[110px] text-center md:pt-[126px] lg:pt-[160px]">
-        <h1 className="font-[var(--font-snack-logo)] text-[56px] font-extrabold leading-none text-[#F97B22] md:text-[88px]">
-          Snack
+        <h1>
+          <Image
+            src="/assets/snack_logo.svg"
+            alt="Snack"
+            width={360}
+            height={92}
+            priority
+            className="h-auto w-[180px] md:w-[260px] lg:w-[360px]"
+          />
         </h1>
 
         <div className="mt-5 flex w-full max-w-[320px] flex-col gap-3 md:hidden">

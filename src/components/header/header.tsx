@@ -122,11 +122,36 @@ interface ClassNameProps {
   className?: string;
 }
 
-export function LandingHeader({ className = "" }: ClassNameProps) {
+interface LandingHeaderProps extends ClassNameProps {
+  actions?: { href: string; label: string }[];
+}
+
+export function LandingHeader({
+  className = "",
+  actions = [],
+}: LandingHeaderProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
-      <div className={cn("flex items-center", HEADER_CONTAINER_CLASS)}>
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          HEADER_CONTAINER_CLASS
+        )}
+      >
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        {actions.length > 0 ? (
+          <div className="hidden items-center gap-3 md:flex md:gap-4">
+            {actions.map((action) => (
+              <Link
+                key={`${action.href}-${action.label}`}
+                href={action.href}
+                className="text-xs font-semibold text-white transition-opacity hover:opacity-80 md:text-sm"
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        ) : null}
       </div>
     </header>
   );

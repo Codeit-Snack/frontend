@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { FormEvent, useState } from "react"
 
-import { AuthGnb } from "@/components/auth/auth-gnb"
+import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -65,7 +65,7 @@ export default function SignupPage() {
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <AuthGnb />
+      <FullWidthCenterHeader className="absolute left-0 top-0 z-10" />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
 
