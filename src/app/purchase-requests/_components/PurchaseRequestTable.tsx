@@ -71,7 +71,7 @@ export function PurchaseRequestTable({
             <th
               className={cn(
                 TH_STYLE,
-                "w-24 px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-r border-[var(--gray-gray-200)] last:rounded-r-full pr-[80px]"
+                "w-24 whitespace-nowrap px-4 pt-6 pb-6 bg-[var(--gray-gray-50)] border-y border-r border-[var(--gray-gray-200)] last:rounded-r-full pr-[80px]"
               )}
             >
               비고

@@ -85,8 +85,8 @@ export default function PurchaseRequestsPage() {
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">
-          <div className="mb-4 md:mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-[Pretendard] text-[32px] font-semibold leading-[42px] text-[var(--black-black-400,#1F1F1F)]">
+          <div className="mb-4 flex items-center justify-between md:mb-10">
+            <h1 className="font-[Pretendard] text-[20px] font-semibold leading-[32px] text-[var(--black-black-400,#1F1F1F)] md:text-[32px] md:leading-[42px]">
               구매 요청 내역
             </h1>
             <SortDropdown value={sort} onChange={setSort} />
@@ -97,7 +97,10 @@ export default function PurchaseRequestsPage() {
           ) : (
             <>
               {isMobile ? (
-                <div key={safePage} className="rounded-lg border border-[var(--gray-gray-200)] bg-white px-4">
+                <div
+                  key={safePage}
+                  className="-mx-[clamp(24px,6.25vw,120px)] md:mx-0"
+                >
                   {pageItems.map((item) => (
                     <PurchaseRequestCard
                       key={item.id}
@@ -114,8 +117,7 @@ export default function PurchaseRequestsPage() {
                 />
               )}
 
-              <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-             
+              <div className="mt-6 flex w-full flex-col items-center justify-center sm:mt-8 sm:flex-row sm:justify-center">
                 {totalPages > 1 && (
                   <Pagination
                     currentPage={safePage}
