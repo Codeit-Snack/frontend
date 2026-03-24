@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
@@ -13,7 +13,7 @@ import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
 import { cn } from "@/lib/utils";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 6;
 
 function sortItems(
   items: PurchaseRequestItem[],
@@ -45,9 +45,18 @@ export default function PurchaseRequestsPage() {
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
   const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
+
+  // 현재 페이지가 총 페이지 수를 넘지 않도록 보정 (예: 10페이지에서 이전으로 갔을 때)
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const pageItems = useMemo(
-    () => paginate(sortedItems, currentPage, ITEMS_PER_PAGE),
-    [sortedItems, currentPage]
+    () => paginate(sortedItems, safePage, ITEMS_PER_PAGE),
+    [sortedItems, safePage]
   );
 
   const handleCancelRequest = useCallback((item: PurchaseRequestItem) => {
@@ -66,7 +75,7 @@ export default function PurchaseRequestsPage() {
   const isMobile = device === "mobile";
 
   return (
-    <div className="min-h-screen bg-[var(--gray-gray-50)]">
+    <div className="min-h-screen background_background_400_b">
       <Header
         device={device}
         isLoggedIn
@@ -74,10 +83,10 @@ export default function PurchaseRequestsPage() {
         cartCount={2}
       />
 
-      <main className={cn(CONTENT_PADDING_X, "pb-12 pt-6 md:pt-8")}>
-        <div className="mx-auto w-full max-w-[1200px]">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-xl font-bold text-gray-900 md:text-2xl">
+      <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
+        <div className="mx-auto w-full max-w-[1680px]">
+          <div className="mb-4 flex items-center justify-between md:mb-10">
+            <h1 className="font-[Pretendard] text-[20px] font-semibold leading-[32px] text-[var(--black-black-400,#1F1F1F)] md:text-[32px] md:leading-[42px]">
               구매 요청 내역
             </h1>
             <SortDropdown value={sort} onChange={setSort} />
@@ -88,7 +97,10 @@ export default function PurchaseRequestsPage() {
           ) : (
             <>
               {isMobile ? (
-                <div className="rounded-lg border border-[var(--gray-gray-200)] bg-white px-4">
+                <div
+                  key={safePage}
+                  className="-mx-[clamp(24px,6.25vw,120px)] md:mx-0"
+                >
                   {pageItems.map((item) => (
                     <PurchaseRequestCard
                       key={item.id}
@@ -99,19 +111,16 @@ export default function PurchaseRequestsPage() {
                 </div>
               ) : (
                 <PurchaseRequestTable
+                  key={safePage}
                   items={pageItems}
                   onCancelRequest={handleCancelRequest}
                 />
               )}
 
-              <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
-                <p className="text-sm text-gray-500">
-                  전체 {sortedItems.length}건 중 {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-                  {Math.min(currentPage * ITEMS_PER_PAGE, sortedItems.length)}건
-                </p>
+              <div className="mt-6 flex w-full flex-col items-center justify-center sm:mt-8 sm:flex-row sm:justify-center">
                 {totalPages > 1 && (
                   <Pagination
-                    currentPage={currentPage}
+                    currentPage={safePage}
                     totalPages={totalPages}
                     onPageChange={setCurrentPage}
                     size="sm"
