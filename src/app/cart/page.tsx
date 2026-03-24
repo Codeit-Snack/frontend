@@ -5,6 +5,7 @@ import CartItemList from "@/components/cart/cart-item-list";
 import CartSummary from "@/components/cart/cart-summary";
 import type { RequestItem } from "@/components/ui/dialog";
 import { Header } from "@/components/header";
+import CartComplete from "@/components/cart/cart-complete";
 
 const DUMMY_ITEMS = [
   { id: "1", image: "", category: "음료", name: "코카콜라 제로", price: 2000, quantity: 1, shipping: 3000, checked: true },
@@ -23,6 +24,8 @@ export default function CartPage() {
   const totalPrice = totalProductPrice + totalShipping;
   const totalCount = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
   const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
+  const [showComplete, setShowComplete] = useState(false);
+  const [completeMessage, setCompleteMessage] = useState("");
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
@@ -41,6 +44,21 @@ export default function CartPage() {
     setItems((prev) =>
       prev.map((item) => item.id === id ? { ...item, quantity } : item)
     );
+
+  if (showComplete) {
+    return (
+      <CartComplete
+        items={requestItems}
+        totalCount={totalCount}
+        totalPrice={totalPrice}
+        message={completeMessage}
+        onBack={() => {
+          setItems((prev) => prev.filter((item) => !item.checked));
+          setShowComplete(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FBF8F4] min-w-[1280px]">
@@ -71,6 +89,10 @@ export default function CartPage() {
             totalPrice={totalPrice}
             totalCount={totalCount}
             requestItems={requestItems}
+            onComplete={(message) => {
+              setCompleteMessage(message);
+              setShowComplete(true);
+            }}
           />
         </div>
       </div>
