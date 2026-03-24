@@ -7,6 +7,7 @@ import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
+import { cn } from "@/lib/utils"
 
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
@@ -85,7 +86,7 @@ export default function SignupPage() {
               placeholder="이메일을 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={`${inputClass} ${showEmailInvalid ? errorInputClass : ""}`}
+              className={cn(inputClass, showEmailInvalid && errorInputClass)}
               autoComplete="email"
               inputMode="email"
               value={email}
@@ -111,9 +112,10 @@ export default function SignupPage() {
               placeholder="비밀번호를 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={`${inputClass} ${
-                showPasswordRequired || showPasswordInvalid ? errorInputClass : ""
-              }`}
+              className={cn(
+                inputClass,
+                (showPasswordRequired || showPasswordInvalid) && errorInputClass
+              )}
               autoComplete="new-password"
               value={password}
               onBlur={() => setPasswordTouched(true)}
@@ -146,7 +148,7 @@ export default function SignupPage() {
               placeholder="비밀번호를 다시 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={`${inputClass} ${showPasswordMismatch ? errorInputClass : ""}`}
+              className={cn(inputClass, showPasswordMismatch && errorInputClass)}
               autoComplete="new-password"
               value={passwordConfirm}
               onChange={(event) => setPasswordConfirm(event.target.value)}

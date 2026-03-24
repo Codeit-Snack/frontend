@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { LandingHeader } from "@/components/header"
+import { cn } from "@/lib/utils"
 
 const bubbleTexts = [
   "쉽고 빠르게 구매를 요청해보세요",
@@ -17,7 +18,7 @@ function SpeechBubble({
   className?: string
 }) {
   return (
-    <div className={`flex flex-col items-center ${className}`.trim()}>
+    <div className={cn("flex flex-col items-center", className)}>
       <div className="flex h-[40px] w-fit max-w-[240px] items-center justify-center rounded-full bg-[#F97B22] px-4 py-2 md:h-[46px] md:max-w-[320px] md:px-5">
         <p className="text-center text-[10px] font-semibold whitespace-nowrap text-white md:text-sm">
           {text}
