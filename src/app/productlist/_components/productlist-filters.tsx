@@ -22,59 +22,71 @@ export function ProductListFilters({
 }: ProductListFiltersProps) {
   const isAllSelected = selectedCategoryId === null
 
-  return (
-    <section className="mt-6 flex flex-col gap-4">
-      {/* 1행: 전체 + 대분류 */}
-      <div
-        className="flex flex-wrap gap-2"
-        role="listbox"
-        aria-label="대분류 카테고리 필터"
-      >
-        <Chip
-          variant="user"
-          selected={isAllSelected}
+return (
+    <section className="mt-8 flex flex-col gap-6">
+      {/* 1행: 대분류 */}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-gray-100 pb-2">
+        <button
           onClick={() => onSelectCategory(null)}
+          className={`relative pb-2 text-lg font-medium transition-colors ${
+            isAllSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
+          }`}
         >
           전체
-        </Chip>
+          {isAllSelected && (
+            <span className="absolute bottom-0 left-0 h-0.5 w-full bg-orange-500" />
+          )}
+        </button>
 
-        {categories.map((c) => (
-          <Chip
-            key={c.id}
-            variant="user"
-            selected={selectedCategoryId === c.id}
-            onClick={() => onSelectCategory(c.id)}
-          >
-            {c.name}
-          </Chip>
-        ))}
+        {categories.map((c) => {
+          const isSelected = selectedCategoryId === c.id
+          return (
+            <button
+              key={c.id}
+              onClick={() => onSelectCategory(c.id)}
+              className={`relative pb-2 text-lg font-medium transition-colors ${
+                isSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {c.name}
+              {isSelected && (
+                <span className="absolute bottom-0 left-0 h-0.5 w-full bg-orange-500" />
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* 2행: 대분류 선택 시 소분류 Chip */}
+      {/* 2행: 소분류 */}
       {selectedCategoryId !== null && subCategories.length > 0 && (
-        <div
-          className="flex flex-wrap gap-2"
-          role="listbox"
-          aria-label="소분류 카테고리 필터"
-        >
-          <Chip
-            variant="user"
-            selected={selectedSubCategoryId === null}
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <button
             onClick={() => onSelectSubCategory(null)}
+            className={`rounded-full px-4 py-1 text-sm transition-all ${
+              selectedSubCategoryId === null
+                ? "bg-orange-50 text-orange-600 font-semibold"
+                : "text-gray-500 hover:bg-gray-50"
+            }`}
           >
-            전체
-          </Chip>
+            전체보기
+          </button>
 
-          {subCategories.map((s) => (
-            <Chip
-              key={s.id}
-              variant="user"
-              selected={selectedSubCategoryId === s.id}
-              onClick={() => onSelectSubCategory(s.id)}
-            >
-              {s.name}
-            </Chip>
-          ))}
+          {subCategories.map((s) => {
+            const isSelected = selectedSubCategoryId === s.id
+            return (
+              <button
+                key={s.id}
+                onClick={() => onSelectSubCategory(s.id)}
+                className={`rounded-full px-4 py-1 text-sm transition-all ${
+                  isSelected
+                    ? "bg-orange-50 text-orange-600 font-semibold"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {s.name}
+              </button>
+            )
+          })}
         </div>
       )}
     </section>
