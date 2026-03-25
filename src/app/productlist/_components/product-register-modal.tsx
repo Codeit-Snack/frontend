@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { CATEGORIES, getSubCategoriesByCategoryId } from "@/data/categories"
 import { ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ProductRegisterModalProps {
   open: boolean
@@ -48,7 +49,10 @@ function CategorySelect({
             onMainChange(val ? Number(val) : null)
             onSubChange(null)
           }}
-          className={`h-[50px] w-full appearance-none rounded-[12px] border border-gray-200 bg-white px-4 pr-10 text-sm focus:border-[#E5762C] focus:outline-none focus:ring-1 focus:ring-[#E5762C] ${selectedMainId ? "text-[#E5762C]" : "text-gray-400"}`}
+          className={cn(
+            "h-[50px] w-full appearance-none rounded-[12px] border border-gray-200 bg-white px-4 pr-10 text-sm focus:border-[#E5762C] focus:outline-none focus:ring-1 focus:ring-[#E5762C]",
+            selectedMainId ? "text-[#E5762C]" : "text-gray-400"
+          )}
         >
           <option value="">대분류</option>
           {CATEGORIES.map((c) => (
@@ -67,8 +71,10 @@ function CategorySelect({
             onSubChange(val ? Number(val) : null)
           }}
           disabled={!selectedMainId}
-          className={`h-[50px] w-full appearance-none rounded-[12px] border border-gray-200 bg-white px-4 pr-10 text-sm focus:border-[#E5762C] focus:outline-none focus:ring-1 focus:ring-[#E5762C] disabled:opacity-50 ${selectedSubId ? "text-[#E5762C]" : "text-gray-400"}`}
-        >
+          className={cn(
+            "h-[50px] w-full appearance-none rounded-[12px] border border-gray-200 bg-white px-4 pr-10 text-sm focus:border-[#E5762C] focus:outline-none focus:ring-1 focus:ring-[#E5762C] disabled:opacity-50",
+            selectedSubId ? "text-[#E5762C]" : "text-gray-400"
+          )}>
           <option value="">소분류</option>
           {subCategories.map((s) => (
             <option key={s.id} value={s.id}>
