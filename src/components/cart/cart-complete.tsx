@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import type { RequestItem } from "@/components/ui/dialog";
+import Image from "next/image";
+import { useDevice } from "@/hooks/use-device";
 
 interface CartCompleteProps {
   items: RequestItem[];
@@ -21,6 +23,7 @@ export default function CartComplete({
   onBack,
 }: CartCompleteProps) {
   const router = useRouter();
+  const device = useDevice();
   const productSummary =
     items.length === 1
       ? items[0].name
@@ -28,16 +31,16 @@ export default function CartComplete({
 
   return (
     <div className="min-h-screen bg-[#FBF8F4]">
-      <Header device="pc" isLoggedIn={true} role="member" />
+      <Header device={device} isLoggedIn={true} role="member" />
 
       {/* 상단 완료 텍스트 */}
-      <div className="flex flex-col items-center justify-center gap-2 py-10 px-[120px]">
+      <div className="flex flex-col items-center justify-center gap-2 py-10 px-6 md:px-[120px]">
         <h1 className="text-[32px] font-[600] text-gray-900">구매 요청 완료</h1>
         <p className="text-base text-gray-400">관리자에게 성공적으로 구매 요청이 완료되었습니다.</p>
       </div>
 
       {/* 콘텐츠 박스 */}
-      <div className="mx-auto w-[640px]">
+      <div className="mx-auto w-full max-w-[640px] px-6">
         <div className="flex flex-col gap-8 p-8 border-b-2 border-gray-200 bg-[#FBF8F4] shadow-[4px_4px_20px_0_rgba(250,250,250,0.12)]">
 
           {/* 상품정보 */}
@@ -46,9 +49,9 @@ export default function CartComplete({
 
           {/* 상품 행 */}
           <div className="flex items-center gap-4">
-            <div className="w-[120px] h-[120px] rounded-[8px] border border-gray-200 bg-gray-100 flex-shrink-0 overflow-hidden">
+            <div className="relative w-[120px] h-[120px] rounded-[8px] border border-gray-200 bg-gray-100 flex-shrink-0 overflow-hidden">
               {items[0]?.image ? (
-                <img src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" />
+                <Image src={items[0].image} alt={items[0].name} fill className="object-cover" unoptimized />
               ) : (
                 <div className="w-full h-full bg-gray-100" />
               )}
@@ -77,17 +80,17 @@ export default function CartComplete({
         </div>
 
         {/* 버튼 */}
-        <div className="flex items-center justify-center gap-8 py-10">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 py-10">
           <Button
             variant="invite"
-            className="w-[310px] h-[64px] rounded-[16px] text-[20px] font-[600] text-[#E5762C] bg-[#FDF0DF] cursor-pointer active:scale-95 transition-transform"
+            className="w-full md:w-[310px] h-[64px] rounded-[16px] text-[20px] font-[600] text-[#E5762C] bg-[#FDF0DF] cursor-pointer active:scale-95 transition-transform"
             onClick={onBack}
           >
             장바구니로 돌아가기
           </Button>
           <Button
             variant="solid"
-            className="w-[310px] h-[64px] rounded-[16px] text-[20px] font-[600] cursor-pointer active:scale-95 transition-transform"
+            className="w-full md:w-[310px] h-[64px] rounded-[16px] text-[20px] font-[600] cursor-pointer active:scale-95 transition-transform"
             onClick={() => router.push("/purchase-requests")}
           >
             요청 내역 확인하기
