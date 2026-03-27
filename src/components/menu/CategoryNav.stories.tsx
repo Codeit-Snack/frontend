@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { CategoryNav } from "./categorynav";
+import { CategoryNav } from "./CategoryNav";
 import { CATEGORIES, SUB_CATEGORIES } from "@/data/categories";
 import type { Category } from "@/types/category";
 import type { SubCategory } from "@/types/category";

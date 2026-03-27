@@ -1,1 +1,1 @@
-export { CategoryNav } from "./categorynav";
+export { CategoryNav } from "./CategoryNav";
