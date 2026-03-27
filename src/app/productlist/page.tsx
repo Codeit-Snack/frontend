@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Pagination from "@/components/ui/pagination"
 import { ProductListAddProductButton } from "./_components/productlist-add-product-button"
+import { ProductRegisterModal } from "./_components/product-register-modal"
 import { ProductListFilters } from "./_components/productlist-filters"
 import { ProductListGrid } from "./_components/productlist-grid"
 import { ProductListHeader } from "./_components/productlist-header"
@@ -11,8 +13,10 @@ import { useProducts } from "./_hooks/use-products"
 export default function ProductListPage() {
   const {
     keyword,
-    category,
     categories,
+    subCategories,
+    selectedCategoryId,
+    selectedSubCategoryId,
     sort,
     sortLabel,
     sortOptions,
@@ -24,12 +28,14 @@ export default function ProductListPage() {
     setPage,
     setKeyword,
     setCategory,
+    setSubCategory,
     setSort,
   } = useProducts()
 
+  const [registerModalOpen, setRegisterModalOpen] = useState(false)
+
   const handleOpenRegisterModal = () => {
-    // 공용 상품등록 모달 훅/컨텍스트가 준비되면 여기에서 연결.
-    // ex) const { open } = useProductRegisterModal(); open();
+    setRegisterModalOpen(true)
   }
 
   return (
@@ -48,8 +54,11 @@ export default function ProductListPage() {
           />
           <ProductListFilters
             categories={categories}
-            selectedCategory={category}
+            subCategories={subCategories}
+            selectedCategoryId={selectedCategoryId}
+            selectedSubCategoryId={selectedSubCategoryId}
             onSelectCategory={setCategory}
+            onSelectSubCategory={setSubCategory}
           />
 
           {error ? (
@@ -67,6 +76,11 @@ export default function ProductListPage() {
 
         <ProductListAddProductButton onClick={handleOpenRegisterModal} />
       </main>
+
+      <ProductRegisterModal
+        open={registerModalOpen}
+        onOpenChange={setRegisterModalOpen}
+      />
     </div>
   )
 }
