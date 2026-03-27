@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useDevice } from "@/hooks/use-device";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { APPROVAL_INFO, DETAIL_ITEMS, REQUEST_INFO } from "./_data";
 
@@ -28,18 +29,9 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 export default function PurchaseRequestDetailPage() {
   const device = useDevice();
-  const [isDesktop, setIsDesktop] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 1280px)");
   const [requestOpen, setRequestOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
-
-  useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1280);
-    };
-    checkDesktop();
-    window.addEventListener("resize", checkDesktop);
-    return () => window.removeEventListener("resize", checkDesktop);
-  }, []);
 
   const useAccordion = !isDesktop;
   const totalCount = useMemo(
