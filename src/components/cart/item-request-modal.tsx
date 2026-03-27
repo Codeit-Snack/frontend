@@ -26,6 +26,7 @@ interface ItemRequestModalProps {
   totalCount: number;
   totalPrice: number;
   trigger: React.ReactNode;
+  onComplete?: (message: string) => void;
 }
 
 export default function ItemRequestModal({
@@ -34,10 +35,13 @@ export default function ItemRequestModal({
   totalCount,
   totalPrice,
   trigger,
+  onComplete,
 }: ItemRequestModalProps) {
   const [message, setMessage] = useState("");
 
   const handleConfirm = () => {
+    if (items.length === 0) return;
+
     const newRequest = {
       id: crypto.randomUUID(),
       requestDate: new Date().toLocaleDateString("ko-KR", {
@@ -52,13 +56,9 @@ export default function ItemRequestModal({
       totalQuantity: totalCount,
       totalAmount: totalPrice,
       status: "pending",
-      imageUrl: items[0]?.image || "",
+      imageUrl: items[0]?.image ?? "",
     };
 
-    // 구매 요청 데이터를 localStorage에 저장합니다.
-    // purchase-requests/page.tsx에서 아래 코드로 읽어와 SEED_PURCHASE_REQUESTS와 합쳐주세요.
-    // const stored = JSON.parse(localStorage.getItem("purchaseRequests") ?? "[]");
-    // const [items, setItems] = useState([...stored, ...SEED_PURCHASE_REQUESTS]);
     const existing = JSON.parse(
       localStorage.getItem("purchaseRequests") ?? "[]"
     );
@@ -66,6 +66,7 @@ export default function ItemRequestModal({
       "purchaseRequests",
       JSON.stringify([newRequest, ...existing])
     );
+    onComplete?.(message);
   };
 
   return (
@@ -104,6 +105,7 @@ export default function ItemRequestModal({
             <Button
               variant="solid"
               className="flex-1 h-[50px] rounded-[12px] cursor-pointer active:scale-95 transition-transform"
+              onClick={handleConfirm}
             >
               구매 요청하기
             </Button>

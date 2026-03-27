@@ -12,6 +12,7 @@ interface CartSummaryProps {
   totalPrice: number;
   totalCount: number;
   requestItems: RequestItem[];
+  onComplete: (message: string) => void;
 }
 
 export default function CartSummary({
@@ -21,6 +22,7 @@ export default function CartSummary({
   totalPrice,
   totalCount,
   requestItems,
+  onComplete,
 }: CartSummaryProps) {
   const router = useRouter();
 
@@ -58,6 +60,7 @@ export default function CartSummary({
           items={requestItems}
           totalCount={totalCount}
           totalPrice={totalPrice}
+          onComplete={onComplete}
           trigger={
             <Button variant="solid" className="py-4 h-auto w-full rounded-[16px] text-[20px] font-[600] cursor-pointer active:scale-95 transition-transform">
               구매 요청
