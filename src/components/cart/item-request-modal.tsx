@@ -26,6 +26,7 @@ interface ItemRequestModalProps {
   totalCount: number;
   totalPrice: number;
   trigger: React.ReactNode;
+  onComplete?: (message: string) => void;
 }
 
 export default function ItemRequestModal({
@@ -34,8 +35,39 @@ export default function ItemRequestModal({
   totalCount,
   totalPrice,
   trigger,
+  onComplete,
 }: ItemRequestModalProps) {
   const [message, setMessage] = useState("");
+
+  const handleConfirm = () => {
+    if (items.length === 0) return;
+
+    const newRequest = {
+      id: crypto.randomUUID(),
+      requestDate: new Date().toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).replace(/\. /g, ".").replace(/\.$/, ""),
+      productSummary:
+        items.length === 1
+          ? items[0].name
+          : `${items[0].name} 외 ${items.length - 1}건`,
+      totalQuantity: totalCount,
+      totalAmount: totalPrice,
+      status: "pending",
+      imageUrl: items[0]?.image ?? "",
+    };
+
+    const existing = JSON.parse(
+      localStorage.getItem("purchaseRequests") ?? "[]"
+    );
+    localStorage.setItem(
+      "purchaseRequests",
+      JSON.stringify([newRequest, ...existing])
+    );
+    onComplete?.(message);
+  };
 
   return (
     <Dialog>
@@ -65,15 +97,15 @@ export default function ItemRequestModal({
         </DialogBody>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outlined" className="flex-1 h-[50px] rounded-[12px]">
+            <Button variant="outlined" className="flex-1 h-[50px] rounded-[12px] cursor-pointer active:scale-95 transition-transform">
               취소
             </Button>
           </DialogClose>
           <DialogClose asChild>
             <Button
-              variant={message.length < 10 ? "solid-disabled" : "solid"}
-              className="flex-1 h-[50px] rounded-[12px]"
-              disabled={message.length < 10}
+              variant="solid"
+              className="flex-1 h-[50px] rounded-[12px] cursor-pointer active:scale-95 transition-transform"
+              onClick={handleConfirm}
             >
               구매 요청하기
             </Button>

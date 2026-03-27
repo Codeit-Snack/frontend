@@ -26,8 +26,8 @@ export default function MembersPage() {
   };
 
   return (
-    <main className="px-8 py-10">
-      <section className="mx-auto max-w-6xl">
+    <main className="px-4 pt-0 pb-6 min-[745px]:px-8 min-[745px]:pt-0 min-[745px]:pb-10">
+      <section className="w-full">
         <MembersHeader
           keyword={keyword}
           onChangeKeyword={handleChangeKeyword}

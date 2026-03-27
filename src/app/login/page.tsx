@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { FormEvent, useState } from "react"
 
-import { AuthGnb } from "@/components/auth/auth-gnb"
+import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
@@ -27,7 +28,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <AuthGnb />
+      <FullWidthCenterHeader className="absolute left-0 top-0 z-10" />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-6">
         <h1 className="w-full text-center text_2xl_semibold black_black_500_t">
           로그인
@@ -61,10 +62,9 @@ export default function LoginPage() {
             <label htmlFor="password" className="text_lg_medium black_black_400_t">
               비밀번호
             </label>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               placeholder="비밀번호를 입력해 주세요"
               variant="outlined"
               inputSize="md"
@@ -72,6 +72,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              toggleLabel="password"
               required
             />
           </div>
@@ -91,7 +92,7 @@ export default function LoginPage() {
           기업담당자이신가요?{" "}
           <Link
             href="/signup/super-admin"
-            className="text_xs_semibold primary_orange_400_t"
+            className="text_xs_semibold text-[#F97B22] underline underline-offset-2"
           >
             가입하기
           </Link>
