@@ -17,10 +17,10 @@ function formatPrice(value: number) {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-2">
-      <p className="font-[Pretendard] text-[16px] font-semibold leading-[24px] text-[var(--black-black-400,#1F1F1F)] lg:text-[20px] lg:leading-[30px] xl:text-[28px] xl:leading-[40px]">
+      <p className="text_xl_semibold black_black_400_t">
         {label}
       </p>
-      <div className="rounded-[16px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white px-5 py-4 font-[Pretendard] text-[15px] font-medium leading-[24px] text-[var(--gray-gray-400,#ABABAB)] lg:px-6 lg:py-5 lg:text-[18px] lg:leading-[28px] xl:text-[28px] xl:leading-[40px]">
+      <div className="self-stretch rounded-[16px] border border-[var(--gray-gray-200,#E0E0E0)] background_background_400_b flex items-start px-6 py-[14px] text_xl_regular gray_gray_500_t">
         {value}
       </div>
     </div>
@@ -49,27 +49,27 @@ export default function PurchaseRequestDetailPage() {
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">
-          <h1 className="mb-6 font-[Pretendard] text-[20px] font-semibold leading-[32px] text-[var(--black-black-400,#1F1F1F)] lg:text-[28px] lg:leading-[38px] xl:mb-10 xl:text-[42px] xl:leading-[52px]">
+          <h1 className="mb-6 text_3xl_semibold black_black_400_t xl:mb-10">
             구매 요청 내역
           </h1>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:gap-10">
+          <div className="grid grid-cols-1 gap-[50px] lg:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <section className="order-2 space-y-4 lg:order-1">
-              <h2 className="font-[Pretendard] text-[18px] font-semibold leading-[28px] text-[var(--black-black-400,#1F1F1F)] lg:text-[24px] lg:leading-[34px] xl:text-[36px] xl:leading-[44px]">
+              <h2 className="text_2xl_bold black_black_400_t">
                 요청 품목
               </h2>
 
-              <div className="rounded-[20px] border border-[var(--black-black-100,#6B6B6B)] bg-white px-4 py-4 sm:px-6 xl:px-8 xl:py-6">
-                <div className="h-[360px] overflow-y-auto lg:h-[460px] xl:h-[560px]">
+              <div className="rounded-[20px] border border-[var(--black-black-100,#6B6B6B)] bg-white p-6 xl:p-10">
+                <div className="-mr-6 h-[360px] overflow-y-auto pr-6 lg:h-[460px] xl:-mr-10 xl:h-[560px] xl:pr-10">
                   {DETAIL_ITEMS.map((item) => {
                     const rowTotal = item.quantity * item.unitPrice;
                     return (
                       <div
                         key={item.id}
-                        className="border-b border-[var(--gray-gray-200,#E0E0E0)] py-4 last:border-b-0"
+                        className="border-b border-[var(--gray-gray-200,#E0E0E0)] py-6 first:pt-0 last:pb-0 last:border-b-0"
                       >
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="relative h-[62px] w-[62px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white p-3 xl:h-[82px] xl:w-[82px]">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative h-[62px] w-[62px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--gray-gray-200,#E0E0E0)] background_background_400_b p-3 xl:h-[82px] xl:w-[82px]">
                             <Image
                               src={item.imageUrl}
                               alt={item.name}
@@ -78,23 +78,23 @@ export default function PurchaseRequestDetailPage() {
                               unoptimized
                             />
                           </div>
-                          <div className="min-w-0 flex-1 pt-1">
-                            <p className="font-[Pretendard] text-[12px] font-medium leading-[18px] text-[var(--gray-gray-400,#ABABAB)] xl:text-[16px] xl:leading-[24px]">
+                          <div className="min-w-0 flex-1 flex flex-col justify-center">
+                            <p className="text_md_regular gray_gray_500_t">
                               {item.category}
                             </p>
-                            <p className="font-[Pretendard] text-[16px] font-semibold leading-[24px] text-[var(--black-black-400,#1F1F1F)] xl:text-[28px] xl:leading-[36px]">
+                            <p className="text_2lg_medium black_black_400_t">
                               {item.name}
                             </p>
                           </div>
-                          <p className="shrink-0 whitespace-nowrap pt-2 font-[Pretendard] text-[14px] font-semibold leading-[22px] text-[var(--black-black-400,#1F1F1F)] sm:text-[16px] sm:leading-[24px] xl:text-[32px] xl:leading-[42px]">
+                          <p className="shrink-0 whitespace-nowrap text_2lg_semibold black_black_400_t">
                             {formatPrice(item.unitPrice)}
                           </p>
                         </div>
                         <div className="mt-2 flex items-end justify-between">
-                          <p className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-200,#525252)] sm:text-[16px] sm:leading-[24px] xl:text-[24px] xl:leading-[34px]">
+                          <p className="text_lg_medium black_black_400_t">
                             수량: {item.quantity}개
                           </p>
-                          <p className="whitespace-nowrap font-[Pretendard] text-[18px] font-bold leading-[26px] text-[var(--black-black-400,#1F1F1F)] sm:text-[20px] sm:leading-[28px] xl:text-[40px] xl:leading-[48px]">
+                          <p className="whitespace-nowrap text_2xl_bold black_black_400_t">
                             {formatPrice(rowTotal)}
                           </p>
                         </div>
@@ -106,26 +106,26 @@ export default function PurchaseRequestDetailPage() {
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2 pt-1 sm:gap-3">
-                <p className="font-[Pretendard] text-[20px] font-semibold leading-[30px] text-[var(--black-black-400,#1F1F1F)] lg:text-[24px] lg:leading-[34px] xl:text-[36px] xl:leading-[44px]">
+                <p className="text_2xl_semibold black_black_400_t">
                   총 {totalCount}건
                 </p>
-                <p className="whitespace-nowrap font-[Pretendard] text-[34px] font-bold leading-[42px] text-[var(--primary-orange-400,#F97B22)] lg:text-[40px] lg:leading-[48px] xl:text-[56px] xl:leading-[64px]">
+                <p className="whitespace-nowrap text_3xl_bold primary_orange_400_t">
                   {formatPrice(totalPrice)}
                 </p>
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-6 flex gap-3">
                 <Button
                   type="button"
                   variant="outlined"
-                  className="!h-14 !min-w-0 !flex-1 !rounded-[16px] !border-0 !bg-[#FFF6E9] font-[Pretendard] !text-[18px] !font-semibold !leading-[28px] !text-[var(--primary-orange-400,#F97B22)] xl:!h-[72px] xl:!text-[28px] xl:!leading-[40px]"
+                  className="!h-14 !min-w-0 !flex-1 !rounded-[16px] !border-0 !bg-[#FFF6E9] text-center text_xl_semibold primary_orange_400_t cursor-pointer xl:!h-[72px]"
                 >
                   목록 보기
                 </Button>
                 <Button
                   type="button"
                   variant="solid"
-                  className="!h-14 !min-w-0 !flex-1 !rounded-[16px] font-[Pretendard] !text-[18px] !font-semibold !leading-[28px] xl:!h-[72px] xl:!text-[28px] xl:!leading-[40px]"
+                  className="!h-14 !min-w-0 !flex-1 !rounded-[16px] text-center text_xl_semibold gray_gray_50_t cursor-pointer xl:!h-[72px]"
                 >
                   장바구니 다시 담기
                 </Button>
@@ -142,7 +142,7 @@ export default function PurchaseRequestDetailPage() {
                   )}
                   onClick={() => useAccordion && setRequestOpen((prev) => !prev)}
                 >
-                  <h2 className="font-[Pretendard] text-[18px] font-semibold leading-[28px] text-[var(--black-black-400,#1F1F1F)] lg:text-[24px] lg:leading-[34px] xl:text-[36px] xl:leading-[44px]">
+                  <h2 className="text_2xl_bold black_black_400_t">
                     요청 정보
                   </h2>
                   {useAccordion && (
@@ -156,7 +156,7 @@ export default function PurchaseRequestDetailPage() {
                 </button>
                 {(requestOpen || !useAccordion) && (
                   <div className="space-y-6 pt-4">
-                    <p className="font-[Pretendard] text-[16px] font-medium leading-[24px] text-[var(--gray-gray-400,#ABABAB)] lg:text-[20px] lg:leading-[30px] xl:text-[32px] xl:leading-[42px]">
+                    <p className="text_xl_regular gray_gray_400_t">
                       {REQUEST_INFO.requestDate}
                     </p>
                     <InfoField label="요청인" value={REQUEST_INFO.requester} />
@@ -174,7 +174,7 @@ export default function PurchaseRequestDetailPage() {
                   )}
                   onClick={() => useAccordion && setApprovalOpen((prev) => !prev)}
                 >
-                  <h2 className="font-[Pretendard] text-[18px] font-semibold leading-[28px] text-[var(--black-black-400,#1F1F1F)] lg:text-[24px] lg:leading-[34px] xl:text-[36px] xl:leading-[44px]">
+                  <h2 className="text_2xl_bold black_black_400_t">
                     승인 정보
                   </h2>
                   {useAccordion && (
@@ -188,7 +188,7 @@ export default function PurchaseRequestDetailPage() {
                 </button>
                 {(approvalOpen || !useAccordion) && (
                   <div className="space-y-6 pt-4">
-                    <p className="font-[Pretendard] text-[16px] font-medium leading-[24px] text-[var(--gray-gray-400,#ABABAB)] lg:text-[20px] lg:leading-[30px] xl:text-[32px] xl:leading-[42px]">
+                    <p className="text_xl_regular gray_gray_400_t">
                       {APPROVAL_INFO.approvalDate}
                     </p>
                     <InfoField label="담당자" value={APPROVAL_INFO.manager} />
