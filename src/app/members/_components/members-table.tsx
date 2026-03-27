@@ -48,7 +48,7 @@ export function MembersTable({
   onDeactivate,
 }: MembersTableProps) {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
