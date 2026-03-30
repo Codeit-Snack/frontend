@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CART_GRID } from "./cart-constants";
 import ItemRequestModal from "./item-request-modal";
 import type { RequestItem } from "@/components/ui/dialog";
+import Image from "next/image";
 
 interface CartItemProps {
   id: string;
@@ -52,9 +53,15 @@ export default function CartItem({
         {/* 상품 정보 */}
         <div className="flex items-center gap-6 px-6 py-6">
           <Checkbox variant="checkbox02" checkboxSize="sm" checked={checked} onChange={() => onToggle(id)} />
-          <div className="w-[160px] h-[160px] flex-shrink-0 rounded-[8px] border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+          <div className="relative w-[160px] h-[160px] flex-shrink-0 rounded-[8px] border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
             {image ? (
-              <img src={image} alt={name} className="w-full h-full object-cover" />
+              <Image
+                src={image}
+                alt={name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 160px"
+              />
             ) : (
               <p className="text-xs text-gray-400 text-center px-2">{name}</p>
             )}
@@ -126,9 +133,15 @@ export default function CartItem({
 
         {/* 이미지 + 상품명/가격 */}
         <div className="flex gap-4 mb-4">
-          <div className="w-[80px] h-[80px] flex-shrink-0 rounded-[8px] border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+          <div className="relative w-[80px] h-[80px] flex-shrink-0 rounded-[8px] border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
             {image ? (
-              <img src={image} alt={name} className="w-full h-full object-cover" />
+              <Image
+                src={image}
+                alt={name}
+                fill
+                className="object-cover"
+                sizes="80px"
+              />
             ) : (
               <p className="text-xs text-gray-400 text-center px-2">{name}</p>
             )}
@@ -141,7 +154,7 @@ export default function CartItem({
 
         {/* 수량 + 즉시요청 */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center h-[44px] w-[130px] rounded-[16px] border border-orange-300 bg-gray-50 px-3">
+          <div className="flex items-center h-[38px] flex-1 rounded-[16px] border border-orange-300 bg-gray-50 px-3">
             <input
               type="number"
               value={quantity}
@@ -166,7 +179,7 @@ export default function CartItem({
             totalPrice={price * quantity}
             onComplete={onComplete}
             trigger={
-              <Button variant="solid" className="flex-1 h-[44px] text-base font-[600] rounded-full cursor-pointer active:scale-95 transition-transform">
+              <Button variant="solid" className="flex-1 h-[38px] text-base font-[600] rounded-[8px] px-8 cursor-pointer active:scale-95 transition-transform">
                 즉시 요청
               </Button>
             }
