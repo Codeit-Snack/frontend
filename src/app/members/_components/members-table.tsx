@@ -75,14 +75,6 @@ export function MembersTable({
             className="h-[318px] w-[375px] min-[745px]:h-[448px] min-[745px]:w-[388px]"
             priority
           />
-          <p className="mt-8 text-center text-[32px] font-semibold leading-[1.4] text-[#A8A29B]">
-            아직 회원이 없어요
-          </p>
-          <p className="mt-4 text-center text-xl font-medium leading-[1.6] text-[#C6C6C6]">
-            함께 이용할 회원을 초대하고
-            <br />
-            간식 구매를 통합 관리하세요
-          </p>
         </div>
       </section>
     );

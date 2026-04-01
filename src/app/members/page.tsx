@@ -80,11 +80,13 @@ export default function MembersPage() {
             onDeactivate={handleOpenDeactivateModal}
           />
         )}
-        <MembersPagination
-          page={page}
-          totalPages={totalPages}
-          onChangePage={setPage}
-        />
+        {members.length > 0 ? (
+          <MembersPagination
+            page={page}
+            totalPages={totalPages}
+            onChangePage={setPage}
+          />
+        ) : null}
         <MembersInviteModal
           open={isInviteModalOpen}
           onOpenChange={setIsInviteModalOpen}
