@@ -32,13 +32,11 @@ function chipClassName(role: Member["role"], compact = false) {
     ? "bg-[var(--background-background-500)] text-[var(--primary-orange-400)] hover:bg-[var(--background-background-500)]"
     : "bg-[var(--background-background-300)] text-[var(--gray-gray-400)] hover:bg-[var(--background-background-300)]";
 
-  const widthClass = roleSelected(role) ? "w-[68px]" : "w-[51px]";
-
   if (compact) {
     return `${baseClass} h-6 px-2.5 py-0 text-xs font-medium`;
   }
 
-  return `${baseClass} ${widthClass} h-[36px] px-0 py-0 text-[20px] font-medium leading-8 justify-center`;
+  return `${baseClass} h-[36px] px-[6px] py-0 text-sm font-medium leading-none justify-center`;
 }
 
 export function MembersTable({
