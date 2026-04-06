@@ -7,6 +7,7 @@ import type { RequestItem } from "@/components/ui/dialog";
 import { Header } from "@/components/header";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import CartComplete from "@/components/cart/cart-complete";
+import { useDevice } from "@/hooks/use-device";
 
 const DUMMY_ITEMS = [
   { id: "1", image: "", category: "음료", name: "코카콜라 제로", price: 2000, quantity: 1, shipping: 3000, checked: true },
@@ -28,6 +29,7 @@ export default function CartPage() {
   const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
   const [showComplete, setShowComplete] = useState(false);
   const [completeMessage, setCompleteMessage] = useState("");
+  const device = useDevice();
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
@@ -63,17 +65,17 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF8F4] min-w-[1280px]">
+    <div className="min-h-screen bg-[#FBF8F4]">
       <Header
-        device="pc"
-        isLoggedIn={isLoggedIn}
-        role={role}
+device={device}
+isLoggedIn={isLoggedIn}
+role={role}
+cartCount={items.length}
         cartCount={items.length}
       />
-
-      <div className="max-w-[1920px] mx-auto py-10 px-[120px] overflow-x-auto">
+      <div className="max-w-[1920px] mx-auto py-10 px-6 lg:px-[120px]">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">장바구니</h1>
-        <div className="flex gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           <CartItemList
             items={items}
             allChecked={allChecked}
@@ -83,6 +85,10 @@ export default function CartPage() {
             onDeleteSelected={deleteSelected}
             onQuantityChange={changeQuantity}
             onDeleteItem={deleteItem}
+            onComplete={(message) => {
+              setCompleteMessage(message);
+              setShowComplete(true);
+            }}
           />
           <CartSummary
             checkedCount={checkedItems.length}

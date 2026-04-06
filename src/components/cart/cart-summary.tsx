@@ -26,11 +26,10 @@ export default function CartSummary({
 }: CartSummaryProps) {
   const router = useRouter();
 
-
   return (
-    <div className="w-[386px] flex-shrink-0 flex flex-col">
+    <div className="w-full lg:w-[386px] lg:flex-shrink-0 flex flex-col">
       {/* 주문 요약 박스 */}
-      <div className="flex flex-col h-[324px] px-6 py-[60px] rounded-[16px] border border-gray-100 bg-white shadow-[4px_4px_20px_0_rgba(250,250,250,0.12)] mb-8">
+      <div className="flex flex-col lg:h-[324px] px-6 py-8 lg:py-[60px] lg:rounded-[16px] lg:border lg:border-gray-100 lg:bg-white lg:shadow-[4px_4px_20px_0_rgba(250,250,250,0.12)] mb-8">
         <div className="flex flex-col gap-4">
           <div className="flex justify-between">
             <span className="text-base font-[500] text-gray-400">총 주문 상품</span>
@@ -45,8 +44,6 @@ export default function CartSummary({
             <span className="text-2xl font-bold text-gray-900">{totalShipping.toLocaleString()}원</span>
           </div>
         </div>
-
-        {/* 구분선 */}
         <div className="border-t border-gray-100 mt-6 pt-6 flex justify-between">
           <span className="text-lg font-[600] text-gray-400">총 주문금액</span>
           <span className="text-2xl font-bold text-[#E5762C]">{totalPrice.toLocaleString()}원</span>
