@@ -1,13 +1,18 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 
 import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
+import { signupAdmin } from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
+
+/** Swagger 예시와 동일 — 기업(사업자) 조직 유형 */
+const ORG_TYPE_BUSINESS = "BUSINESS"
 
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
@@ -21,6 +26,7 @@ const passwordGuideText =
   "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
 
 export default function SuperAdminSignupPage() {
+  const router = useRouter()
   const [managerName, setManagerName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -30,6 +36,8 @@ export default function SuperAdminSignupPage() {
   const [emailTouched, setEmailTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const normalizedEmail = email.trim()
   const isEmailValid = emailPattern.test(normalizedEmail)
@@ -60,19 +68,43 @@ export default function SuperAdminSignupPage() {
     businessNumber.trim().length > 0 &&
     password === passwordConfirm
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitted(true)
+    setSubmitError(null)
 
     if (!canSubmit) return
 
-    // TODO: connect signup API
-    window.alert("가입 조건이 충족되었습니다.")
+    setIsSubmitting(true)
+    try {
+      const result = await signupAdmin({
+        email: normalizedEmail,
+        password,
+        displayName: managerName.trim(),
+        organizationName: companyName.trim(),
+        orgType: ORG_TYPE_BUSINESS,
+        businessNumber: businessNumber.trim(),
+      })
+
+      if (result.ok) {
+        router.push("/login")
+        return
+      }
+
+      setSubmitError(result.message)
+    } catch {
+      setSubmitError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <FullWidthCenterHeader className="absolute left-0 top-0 z-10" />
+      <FullWidthCenterHeader
+        className="absolute left-0 top-0 z-10"
+        logoHref="/"
+      />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">
           기업담당자 회원가입
@@ -237,14 +269,20 @@ export default function SuperAdminSignupPage() {
             />
           </div>
 
+          {submitError ? (
+            <p className="text_sm_medium w-full max-w-[327px] text-[#F97B22] md:max-w-[640px]">
+              {submitError}
+            </p>
+          ) : null}
+
           <Button
             type="submit"
             variant="solid"
             size="lg"
-            disabled={!canSubmit}
+            disabled={!canSubmit || isSubmitting}
             className="h-[54px] w-full max-w-[327px] disabled:cursor-not-allowed disabled:opacity-60 md:h-[64px] md:max-w-[640px]"
           >
-            시작하기
+            {isSubmitting ? "처리 중…" : "시작하기"}
           </Button>
         </form>
 
