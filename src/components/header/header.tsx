@@ -198,11 +198,33 @@ export function CenterHeader({ className = "" }: ClassNameProps) {
   );
 }
 
-export function FullWidthCenterHeader({ className = "" }: ClassNameProps) {
+interface FullWidthCenterHeaderProps extends ClassNameProps {
+  /** 설정 시 로고 클릭 시 해당 경로로 이동 (예: 랜딩 `/`) */
+  logoHref?: string;
+}
+
+export function FullWidthCenterHeader({
+  className = "",
+  logoHref,
+}: FullWidthCenterHeaderProps) {
+  const logo = (
+    <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+  );
+
   return (
     <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        {logoHref ? (
+          <Link
+            href={logoHref}
+            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            aria-label="홈으로 이동"
+          >
+            {logo}
+          </Link>
+        ) : (
+          logo
+        )}
       </div>
     </header>
   );
