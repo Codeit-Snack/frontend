@@ -3,44 +3,69 @@ import Link from "next/link"
 import { LandingHeader } from "@/components/header"
 import { cn } from "@/lib/utils"
 
-const bubbleTexts = [
+const TAGLINE =
+  "흩어진 간식 구매처를 통합하고, 기수별 지출을 똑똑하게 관리하세요"
+
+const BUBBLES = [
   "쉽고 빠르게 구매를 요청해보세요",
   "내가 원하는 간식을, 원하는 만큼!",
   "다양한 품목도 한 눈에 파악해요",
   "관리자와 유저 모두 이용 가능해요",
-]
+] as const
 
-function SpeechBubble({
-  text,
-  className = "",
-}: {
-  text: string
-  className?: string
-}) {
+/** 모바일 말풍선 세로 순서 (인덱스) */
+const BUBBLE_ORDER_MOBILE = [1, 3, 2, 0] as const
+
+const CTAS = [
+  { href: "/login", label: "로그인", mobileLabel: "로그인" },
+  {
+    href: "/signup/super-admin",
+    label: "기업담당자 회원가입",
+    mobileLabel: "관리자 회원가입",
+  },
+] as const
+
+const ctaClass =
+  "flex min-h-11 w-full items-center justify-center rounded-full border border-[#F97B22] bg-white px-5 py-3 text-sm font-semibold text-[#F97B22] transition-colors hover:bg-[#FFF3E8]"
+
+function SpeechBubble({ text, className }: { text: string; className?: string }) {
   return (
     <div className={cn("flex flex-col items-center", className)}>
-      <div className="flex h-[40px] w-fit max-w-[240px] items-center justify-center rounded-full bg-[#F97B22] px-4 py-2 md:h-[46px] md:max-w-[320px] md:px-5">
-        <p className="text-center text-[10px] font-semibold whitespace-nowrap text-white md:text-sm">
+      <div
+        className={cn(
+          "flex min-h-10 w-fit max-w-[min(100%,280px)] items-center justify-center rounded-full bg-[#F97B22] px-4 py-2",
+          "md:min-h-[46px] md:max-w-[320px] md:px-5"
+        )}
+      >
+        <p className="text-center text-[11px] font-semibold leading-snug text-white md:text-sm">
           {text}
         </p>
       </div>
-      <div className="h-[10px] w-[16px] rotate-180 bg-[#F97B22] [clip-path:polygon(50%_0,0_100%,100%_100%)] md:h-[12px] md:w-[18px]" />
+      <div
+        className="h-2.5 w-4 rotate-180 bg-[#F97B22] [clip-path:polygon(50%_0,0_100%,100%_100%)] md:h-3 md:w-[18px]"
+        aria-hidden
+      />
     </div>
   )
 }
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#FDF0DF]">
+    <main className="relative min-h-screen min-h-[100dvh] overflow-hidden bg-[#FDF0DF]">
       <LandingHeader
         className="absolute left-0 top-0 z-20 w-full"
-        actions={[
-          { href: "/login", label: "로그인" },
-          { href: "/signup/super-admin", label: "기업담당자 회원가입" },
-        ]}
+        centerLogoOnMobile
+        logoHref="/"
+        actions={CTAS.map(({ href, label }) => ({ href, label }))}
       />
 
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1920px] flex-col items-center px-6 pb-[38vh] pt-[110px] text-center md:pt-[126px] lg:pt-[160px]">
+      <section
+        className={cn(
+          "relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[1920px] flex-col items-center px-5 text-center",
+          "pt-[calc(54px+20px)] pb-[42vh] md:px-8 md:pt-[calc(64px+28px)] md:pb-[36vh]",
+          "lg:pt-[calc(88px+32px)] lg:pb-[32vh] xl:pb-[34vh]"
+        )}
+      >
         <h1>
           <Image
             src="/assets/snack_logo.svg"
@@ -48,75 +73,60 @@ export default function HomePage() {
             width={360}
             height={92}
             priority
-            className="h-auto w-[180px] md:w-[260px] lg:w-[360px]"
+            className="h-auto w-[200px] md:w-[280px] xl:w-[360px]"
           />
         </h1>
 
-        <div className="mt-5 flex w-full max-w-[320px] flex-col gap-3 md:hidden">
-          <Link
-            href="/login"
-            className="flex min-h-11 items-center justify-center rounded-full border border-[#F97B22] bg-white px-5 py-3 text-sm font-semibold text-[#F97B22] transition-colors hover:bg-[#FFF3E8]"
-          >
-            로그인
-          </Link>
-          <Link
-            href="/signup/super-admin"
-            className="flex min-h-11 items-center justify-center rounded-full border border-[#F97B22] bg-white px-5 py-3 text-sm font-semibold text-[#F97B22] transition-colors hover:bg-[#FFF3E8]"
-          >
-            관리자 회원가입
-          </Link>
-        </div>
+        <nav
+          className="mt-6 flex w-full max-w-[320px] flex-col gap-3 md:hidden"
+          aria-label="빠른 이동"
+        >
+          {CTAS.map(({ href, mobileLabel }) => (
+            <Link key={href} href={href} className={ctaClass}>
+              {mobileLabel}
+            </Link>
+          ))}
+        </nav>
 
-        <p className="mt-5 hidden rounded-full border border-[#F97B22]/35 bg-white/60 px-5 py-3 text-sm font-semibold text-[#E5762C] md:block md:text-xl">
-          흩어진 간식 구매처를 통합하고, 기수별 지출을 똑똑하게 관리하세요
+        <p className="mt-8 hidden max-w-[640px] rounded-full border border-[#F97B22]/35 bg-white/80 px-5 py-3 text-sm font-semibold text-[#E5762C] shadow-sm md:block md:text-base lg:text-lg xl:text-xl">
+          {TAGLINE}
         </p>
 
-        <div className="relative mt-12 h-[132px] w-full max-w-[320px] md:hidden">
-          <SpeechBubble
-            text={bubbleTexts[1]}
-            className="absolute left-1/2 top-0 z-20 -translate-x-[24%]"
-          />
-          <SpeechBubble
-            text={bubbleTexts[3]}
-            className="absolute left-1/2 top-[46px] z-10 -translate-x-[92%]"
-          />
-          <SpeechBubble
-            text={bubbleTexts[2]}
-            className="absolute left-1/2 top-[62px] z-10 translate-x-[12%]"
-          />
-          <SpeechBubble
-            text={bubbleTexts[0]}
-            className="absolute left-1/2 top-[98px] z-0 -translate-x-[114%]"
-          />
+        <ul className="mt-10 flex w-full max-w-[320px] flex-col items-center gap-5 md:hidden">
+          {BUBBLE_ORDER_MOBILE.map((i) => (
+            <li key={i}>
+              <SpeechBubble text={BUBBLES[i]} />
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-10 hidden w-full max-w-[760px] flex-col gap-3 px-2 md:flex xl:hidden">
+          <SpeechBubble text={BUBBLES[1]} className="self-end pr-[8%]" />
+          <SpeechBubble text={BUBBLES[3]} className="self-start pl-[5%]" />
+          <SpeechBubble text={BUBBLES[2]} className="self-end pr-[12%]" />
+          <SpeechBubble text={BUBBLES[0]} className="self-center" />
         </div>
 
-        <div className="mt-12 hidden w-full max-w-[760px] flex-col gap-2 px-4 md:flex xl:hidden">
-          <SpeechBubble text={bubbleTexts[0]} className="self-start ml-12" />
-          <SpeechBubble text={bubbleTexts[1]} className="self-end mr-[10%]" />
-          <SpeechBubble text={bubbleTexts[3]} className="self-start -ml-6" />
-          <SpeechBubble text={bubbleTexts[2]} className="self-end" />
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 hidden xl:block">
+        <div className="pointer-events-none absolute inset-0 z-[5] hidden xl:block">
           <div className="absolute left-[10%] top-[43%]">
-            <SpeechBubble text={bubbleTexts[0]} />
+            <SpeechBubble text={BUBBLES[0]} />
           </div>
           <div className="absolute left-[3%] top-[60%]">
-            <SpeechBubble text={bubbleTexts[1]} />
+            <SpeechBubble text={BUBBLES[1]} />
           </div>
           <div className="absolute right-[10%] top-[43%]">
-            <SpeechBubble text={bubbleTexts[2]} />
+            <SpeechBubble text={BUBBLES[2]} />
           </div>
           <div className="absolute right-[3%] top-[60%]">
-            <SpeechBubble text={bubbleTexts[3]} />
+            <SpeechBubble text={BUBBLES[3]} />
           </div>
         </div>
       </section>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[50vh]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[44vh] md:h-[38vh] xl:h-[46vh]">
         <Image
           src="/assets/landing-bd.png"
-          alt="Snack 랜딩 강아지 이미지"
+          alt=""
           fill
           priority
           className="object-contain object-bottom mix-blend-multiply"
