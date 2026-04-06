@@ -72,7 +72,7 @@ export default function ItemRequestModal({
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="bg-[#FBF8F4]">
         <DialogHeader>
           <DialogTitle>구매 요청</DialogTitle>
         </DialogHeader>

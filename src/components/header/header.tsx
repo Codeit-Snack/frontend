@@ -1,21 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   ShoppingCart,
   User,
-  LogOut,
   Package,
   ShoppingBag,
   ClipboardList,
   FileText,
   X,
 } from "lucide-react";
+import { clearAuthSession } from "@/lib/auth/clear-session";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
+/** 로그인 PC GNB가 좁은 뷰포트에서 꽉 차기 전·줄바꿈 전에 모바일(햄버거) 헤더로 전환 — Tailwind `lg`와 동일 */
+const HEADER_USE_MOBILE_NAV_QUERY = "(max-width: 1023px)";
 
 /** 주황 배경용 로고 (밝은색), 흰 배경용 로고 (주황). public/assets SVG 사용 */
 const LOGO_LIGHT_SRC = "/assets/snack_logo_light.svg";
@@ -108,8 +112,9 @@ const HEADER_HEIGHT_CLASS =
 /** GNB 왼쪽 영역(로고+네비) 간격 72px, 오른쪽 영역 간격 80px */
 /** 헤더 아래 콘텐츠 영역 좌우 패딩: 최대 120px, 화면이 줄어들면 점점 감소 (clamp 24px~120px) */
 export const CONTENT_PADDING_X = "px-[clamp(24px,6.25vw,120px)]";
-const GNB_LEFT_GAP = "gap-[72px]";
-const GNB_RIGHT_GAP = "gap-[80px]";
+/** 좁은 PC 뷰포트에서 메뉴·간격이 함께 줄어들도록 유동 간격 */
+const GNB_LEFT_GAP = "gap-[clamp(24px,5vw,72px)]";
+const GNB_RIGHT_GAP = "gap-[clamp(20px,5vw,80px)]";
 /** 헤더 내부: PC(1920px~)에서만 최대 1680px·가운데 정렬 / 모바일·태블릿은 전체 너비 */
 const HEADER_CONTAINER_CLASS = "w-full min-[1920px]:max-w-[1680px] min-[1920px]:mx-auto";
 
@@ -118,34 +123,79 @@ function isNavActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
 }
 
+function HeaderLogoutButton({
+  className,
+  children,
+  onAfter,
+}: {
+  className?: string;
+  children: ReactNode;
+  onAfter?: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        clearAuthSession();
+        onAfter?.();
+        router.push("/");
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface ClassNameProps {
   className?: string;
 }
 
 interface LandingHeaderProps extends ClassNameProps {
   actions?: { href: string; label: string }[];
+  /** 모바일에서 로고만 가운데, 액션은 md 이상에서만 표시 */
+  centerLogoOnMobile?: boolean;
+  logoHref?: string;
 }
 
 export function LandingHeader({
   className = "",
   actions = [],
+  centerLogoOnMobile = false,
+  logoHref,
 }: LandingHeaderProps) {
+  const logo = (
+    <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+  );
+
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div
         className={cn(
-          "flex items-center justify-between",
+          "flex w-full items-center",
+          centerLogoOnMobile ? "justify-center md:justify-between" : "justify-between",
           HEADER_CONTAINER_CLASS
         )}
       >
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        {logoHref ? (
+          <Link
+            href={logoHref}
+            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            aria-label="홈으로 이동"
+          >
+            {logo}
+          </Link>
+        ) : (
+          logo
+        )}
         {actions.length > 0 ? (
-          <div className="hidden items-center gap-3 md:flex md:gap-4">
+          <div className="hidden items-center gap-4 md:flex lg:gap-6">
             {actions.map((action) => (
               <Link
                 key={`${action.href}-${action.label}`}
                 href={action.href}
-                className="text-xs font-semibold text-white transition-opacity hover:opacity-80 md:text-sm"
+                className="text-sm font-semibold text-white transition-opacity hover:opacity-80 lg:text-base"
               >
                 {action.label}
               </Link>
@@ -162,11 +212,17 @@ export function LoginHeader({ className = "" }: ClassNameProps) {
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
         <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
-        <div className={cn("flex", GNB_RIGHT_GAP)}>
-          <Link href="/login" className="text_xl_bold text-white hover:text-white/80 transition-colors">
+        <div className={cn("flex min-w-0 items-center justify-end", GNB_RIGHT_GAP)}>
+          <Link
+            href="/login"
+            className="text_header_nav_bold shrink-0 text-white transition-colors hover:text-white/80"
+          >
             로그인
           </Link>
-          <Link href="/signup" className="text_xl_bold text-white hover:text-white/80 transition-colors">
+          <Link
+            href="/signup"
+            className="text_header_nav_bold shrink-0 text-white transition-colors hover:text-white/80"
+          >
             기본 당일권 회원가입
           </Link>
         </div>
@@ -187,11 +243,33 @@ export function CenterHeader({ className = "" }: ClassNameProps) {
   );
 }
 
-export function FullWidthCenterHeader({ className = "" }: ClassNameProps) {
+interface FullWidthCenterHeaderProps extends ClassNameProps {
+  /** 설정 시 로고 클릭 시 해당 경로로 이동 (예: 랜딩 `/`) */
+  logoHref?: string;
+}
+
+export function FullWidthCenterHeader({
+  className = "",
+  logoHref,
+}: FullWidthCenterHeaderProps) {
+  const logo = (
+    <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+  );
+
   return (
     <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        {logoHref ? (
+          <Link
+            href={logoHref}
+            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            aria-label="홈으로 이동"
+          >
+            {logo}
+          </Link>
+        ) : (
+          logo
+        )}
       </div>
     </header>
   );
@@ -281,13 +359,12 @@ export function MobileHeader({
                         {item.label}
                       </Link>
                     ))}
-                    <button
-                      type="button"
-                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base w-full text-left"
-                      onClick={() => setOpen(false)}
+                    <HeaderLogoutButton
+                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base w-full cursor-pointer text-left"
+                      onAfter={() => setOpen(false)}
                     >
                       로그아웃
-                    </button>
+                    </HeaderLogoutButton>
                   </>
                 )}
               </nav>
@@ -340,12 +417,17 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
   const items = NAV_BY_ROLE.member;
   return (
     <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
-      <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
-        <div className={cn("flex items-center", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center">
+      <div className={cn("flex min-w-0 items-center justify-between gap-3", HEADER_CONTAINER_CLASS)}>
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            GNB_LEFT_GAP
+          )}
+        >
+          <Link href="/" className="flex shrink-0 items-center">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
-          <nav className={cn("flex", GNB_LEFT_GAP)}>
+          <nav className={cn("flex shrink-0 flex-nowrap", GNB_LEFT_GAP)}>
             {items.map((item) => {
               const active = isNavActive(pathname ?? "", item.href);
               return (
@@ -353,7 +435,7 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
                   key={item.label}
                   href={item.href}
                   className={cn(
-                    "text_xl_bold transition-colors",
+                    "shrink-0 text_header_nav_bold transition-colors",
                     active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
                   )}
                 >
@@ -363,8 +445,11 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
             })}
           </nav>
         </div>
-        <div className={cn("flex items-center", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+        <div className={cn("flex shrink-0 items-center", GNB_RIGHT_GAP)}>
+          <Link
+            href="/cart"
+            className="relative flex shrink-0 items-center gap-1 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
+          >
             Cart
             {cartCount > 0 && (
               <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
@@ -372,12 +457,19 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
               </span>
             )}
           </Link>
-          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <Link
+            href="/profile"
+            className="shrink-0 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
+          >
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+
+          <button
+            type="button"
+            className="shrink-0 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
+          >
             Logout
-          </button>
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>
@@ -406,7 +498,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
                   key={item.label}
                   href={item.href}
                   className={cn(
-                    "text_xl_bold transition-colors whitespace-nowrap shrink-0",
+                    "text_header_nav_bold transition-colors shrink-0",
                     active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
                   )}
                 >
@@ -417,7 +509,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <Link href="/cart" className="relative flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Cart
             {cartCount > 0 && (
               <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
@@ -425,12 +517,14 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
               </span>
             )}
           </Link>
-          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+<HeaderLogoutButton
+  className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer"
+>
             Logout
-          </button>
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>
@@ -459,7 +553,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
                   key={item.label}
                   href={item.href}
                   className={cn(
-                    "text_xl_bold transition-colors whitespace-nowrap shrink-0",
+                    "text_header_nav_bold transition-colors shrink-0",
                     active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
                   )}
                 >
@@ -470,7 +564,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <Link href="/cart" className="relative flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Cart
             {cartCount > 0 && (
               <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
@@ -478,12 +572,12 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
               </span>
             )}
           </Link>
-          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
-            Logout
-          </button>
+<HeaderLogoutButton className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer">
+  로그아웃
+</HeaderLogoutButton>
         </div>
       </div>
     </header>
@@ -496,6 +590,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
  * - 비로그인 MO → CenterHeader (주황 배경, 가운데 로고)
  * - 로그인 MO 회원/관리자/최고관리자 → MobileHeader
  * - 로그인 PC 회원/관리자/최고관리자 → DetailHeader / AdminHeader / SuperAdminHeader
+ * - 로그인 상태에서 뷰포트가 `lg` 미만이면(1023px 이하) PC GNB 대신 항상 MobileHeader
  */
 export function Header({
   device,
@@ -504,15 +599,19 @@ export function Header({
   cartCount = 0,
   className = "",
 }: HeaderProps) {
+  const useMobileNavLayout = useMediaQuery(HEADER_USE_MOBILE_NAV_QUERY);
+
   if (!isLoggedIn) {
     if (device === "mobile") return <CenterHeader className={className} />;
     return <LoginHeader className={className} />;
   }
-  if (device === "mobile") {
+
+  if (device === "mobile" || useMobileNavLayout) {
     return (
       <MobileHeader isLoggedIn userRole={role} cartCount={cartCount} className={className} />
     );
   }
+
   if (role === "member") return <DetailHeader cartCount={cartCount} className={className} />;
   if (role === "admin") return <AdminHeader cartCount={cartCount} className={className} />;
   return <SuperAdminHeader cartCount={cartCount} className={className} />;

@@ -25,6 +25,7 @@ interface CartItemListProps {
   onDeleteSelected: () => void;
   onQuantityChange: (id: string, quantity: number) => void;
   onDeleteItem: (id: string) => void;
+  onComplete?: (message: string) => void;
 }
 
 export default function CartItemList({
@@ -36,12 +37,24 @@ export default function CartItemList({
   onDeleteSelected,
   onQuantityChange,
   onDeleteItem,
+  onComplete,
 }: CartItemListProps) {
   return (
-    <div className="flex-1">
-      <div className="border-y border-gray-300">
+    <div className="w-full">
+      {/* 모바일 전체선택 */}
+      <div className="lg:hidden flex items-center gap-3 px-2 py-3 border-b border-gray-200 mb-2">
+        <Checkbox
+          variant="checkbox02"
+          checkboxSize="sm"
+          checked={allChecked}
+          onChange={onToggleAll}
+        />
+        <span className="text-base text-gray-900">전체 선택</span>
+      </div>
+
+      <div className="lg:border-y border-gray-300">
         {/* 헤더 */}
-        <div className={`grid ${CART_GRID} h-[80px] border-b border-gray-300`}>
+        <div className={`hidden lg:grid ${CART_GRID} h-[80px] border-b border-gray-300`}>
           <div className="flex items-center gap-3 px-6">
             <Checkbox
               variant="checkbox02"
@@ -70,6 +83,7 @@ export default function CartItemList({
             onToggle={onToggleItem}
             onQuantityChange={onQuantityChange}
             onDelete={onDeleteItem}
+            onComplete={onComplete}
           />
         ))}
       </div>

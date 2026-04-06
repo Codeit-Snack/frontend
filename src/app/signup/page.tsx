@@ -66,7 +66,10 @@ export default function SignupPage() {
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <FullWidthCenterHeader className="absolute left-0 top-0 z-10" />
+      <FullWidthCenterHeader
+        className="absolute left-0 top-0 z-10"
+        logoHref="/"
+      />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
 
