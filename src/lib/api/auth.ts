@@ -1,9 +1,16 @@
 import { encryptPasswordForTransportIfConfigured } from "@/lib/crypto/password-transport";
+import {
+  AUTH_ACCESS_TOKEN_KEY,
+  AUTH_REFRESH_TOKEN_KEY,
+} from "@/lib/auth/constants";
+import { persistMembershipRoleFromLoginData } from "@/lib/auth/session-storage";
 import { API_BASE_URL } from "@/lib/env";
 
-/** 이후 API 호출 시 Authorization 헤더에 사용 (클라이언트 전용 저장) */
-export const AUTH_ACCESS_TOKEN_KEY = "snack_access_token";
-export const AUTH_REFRESH_TOKEN_KEY = "snack_refresh_token";
+export {
+  AUTH_ACCESS_TOKEN_KEY,
+  AUTH_REFRESH_TOKEN_KEY,
+} from "@/lib/auth/constants";
+export { AUTH_MEMBERSHIP_ROLE_KEY } from "@/lib/auth/constants";
 
 /** 필드 의미 순서: email → password → invitationToken (Swagger `LoginDto`와 동일) */
 export type LoginPayload = {
@@ -177,6 +184,7 @@ export async function login(
       const pair = extractTokensFromLoginData(data);
       if (pair) {
         persistAuthTokens(pair.accessToken, pair.refreshToken);
+        persistMembershipRoleFromLoginData(data, pair.accessToken);
         return { ok: true };
       }
       return {

@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   ShoppingCart,
   User,
-  LogOut,
   Package,
   ShoppingBag,
   ClipboardList,
   FileText,
   X,
 } from "lucide-react";
+import { clearAuthSession } from "@/lib/auth/clear-session";
 import { cn } from "@/lib/utils";
 
 /** 주황 배경용 로고 (밝은색), 흰 배경용 로고 (주황). public/assets SVG 사용 */
@@ -118,34 +118,79 @@ function isNavActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
 }
 
+function HeaderLogoutButton({
+  className,
+  children,
+  onAfter,
+}: {
+  className?: string;
+  children: ReactNode;
+  onAfter?: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        clearAuthSession();
+        onAfter?.();
+        router.push("/");
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface ClassNameProps {
   className?: string;
 }
 
 interface LandingHeaderProps extends ClassNameProps {
   actions?: { href: string; label: string }[];
+  /** 모바일에서 로고만 가운데, 액션은 md 이상에서만 표시 */
+  centerLogoOnMobile?: boolean;
+  logoHref?: string;
 }
 
 export function LandingHeader({
   className = "",
   actions = [],
+  centerLogoOnMobile = false,
+  logoHref,
 }: LandingHeaderProps) {
+  const logo = (
+    <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+  );
+
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div
         className={cn(
-          "flex items-center justify-between",
+          "flex w-full items-center",
+          centerLogoOnMobile ? "justify-center md:justify-between" : "justify-between",
           HEADER_CONTAINER_CLASS
         )}
       >
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        {logoHref ? (
+          <Link
+            href={logoHref}
+            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            aria-label="홈으로 이동"
+          >
+            {logo}
+          </Link>
+        ) : (
+          logo
+        )}
         {actions.length > 0 ? (
-          <div className="hidden items-center gap-3 md:flex md:gap-4">
+          <div className="hidden items-center gap-4 md:flex lg:gap-6">
             {actions.map((action) => (
               <Link
                 key={`${action.href}-${action.label}`}
                 href={action.href}
-                className="text-xs font-semibold text-white transition-opacity hover:opacity-80 md:text-sm"
+                className="text-sm font-semibold text-white transition-opacity hover:opacity-80 lg:text-base"
               >
                 {action.label}
               </Link>
@@ -303,13 +348,12 @@ export function MobileHeader({
                         {item.label}
                       </Link>
                     ))}
-                    <button
-                      type="button"
-                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base w-full text-left"
-                      onClick={() => setOpen(false)}
+                    <HeaderLogoutButton
+                      className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base w-full cursor-pointer text-left"
+                      onAfter={() => setOpen(false)}
                     >
                       로그아웃
-                    </button>
+                    </HeaderLogoutButton>
                   </>
                 )}
               </nav>
@@ -397,9 +441,9 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
           <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <HeaderLogoutButton className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors cursor-pointer">
             Logout
-          </button>
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>
@@ -450,9 +494,9 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
           <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <HeaderLogoutButton className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer">
             Logout
-          </button>
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>
@@ -503,9 +547,9 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
           <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
             Profile
           </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap">
+          <HeaderLogoutButton className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer">
             Logout
-          </button>
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>

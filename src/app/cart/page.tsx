@@ -5,6 +5,7 @@ import CartItemList from "@/components/cart/cart-item-list";
 import CartSummary from "@/components/cart/cart-summary";
 import type { RequestItem } from "@/components/ui/dialog";
 import { Header } from "@/components/header";
+import { useAuthHeader } from "@/hooks/use-auth-header";
 import CartComplete from "@/components/cart/cart-complete";
 
 const DUMMY_ITEMS = [
@@ -15,6 +16,7 @@ const DUMMY_ITEMS = [
 ];
 
 export default function CartPage() {
+  const { isLoggedIn, role } = useAuthHeader();
   const [items, setItems] = useState(DUMMY_ITEMS);
 
   const allChecked = items.every((item) => item.checked);
@@ -64,8 +66,8 @@ export default function CartPage() {
     <div className="min-h-screen bg-[#FBF8F4] min-w-[1280px]">
       <Header
         device="pc"
-        isLoggedIn={true}
-        role="member"
+        isLoggedIn={isLoggedIn}
+        role={role}
         cartCount={items.length}
       />
 
