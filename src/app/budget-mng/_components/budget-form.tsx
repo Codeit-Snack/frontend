@@ -49,8 +49,11 @@ export const BudgetForm = ({
         <div className="flex flex-col gap-7">
           <div className="flex flex-col gap-4">
             <label htmlFor="monthly-budget" className="w-full text-sm font-medium">
-              이번 달 예산
+              월별 예산 선택(선택하지 않으면 이번 달 예산 적용)
             </label>
+            <div className="flex flex-col gap-4">
+              <Input id="date-range" placeholder="2026.01"></Input><Image src="/icons/calendar.svg" alt="calendar" width={24} height={24} />
+            </div>
             <Input
               id="monthly-budget"
               placeholder="3,500,000"
