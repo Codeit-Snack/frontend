@@ -464,10 +464,7 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
             Profile
           </Link>
 
-          <button
-            type="button"
-            className="shrink-0 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
-          >
+          <HeaderLogoutButton className="shrink-0 cursor-pointer text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]">
             Logout
           </HeaderLogoutButton>
         </div>
@@ -520,9 +517,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
           </Link>
-<HeaderLogoutButton
-  className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer"
->
+          <HeaderLogoutButton className="cursor-pointer whitespace-nowrap text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]">
             Logout
           </HeaderLogoutButton>
         </div>
@@ -575,9 +570,9 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
           </Link>
-<HeaderLogoutButton className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors whitespace-nowrap cursor-pointer">
-  로그아웃
-</HeaderLogoutButton>
+          <HeaderLogoutButton className="cursor-pointer whitespace-nowrap text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]">
+            Logout
+          </HeaderLogoutButton>
         </div>
       </div>
     </header>

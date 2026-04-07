@@ -67,10 +67,9 @@ export default function CartPage() {
   return (
     <div className="min-h-screen bg-[#FBF8F4]">
       <Header
-device={device}
-isLoggedIn={isLoggedIn}
-role={role}
-cartCount={items.length}
+        device={device}
+        isLoggedIn={isLoggedIn}
+        role={role}
         cartCount={items.length}
       />
       <div className="max-w-[1920px] mx-auto py-10 px-6 lg:px-[120px]">
