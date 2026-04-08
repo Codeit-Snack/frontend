@@ -1,5 +1,5 @@
 export interface GetMonthlyBudgetDefaultResponse {
-  /** `organizations.default_monthly_budget` — 없거나 미적용이면 0 */
+  /** `default_monthly_budget` — if not set or not applied, then 0 */
   defaultMonthlyBudget: number
 }
 

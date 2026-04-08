@@ -6,15 +6,21 @@ import type {
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const
 
-/** 비어 있으면 같은 출처(Next)의 `/api/...` 호출. 예: `http://localhost:4000` */
-function apiUrl(path: string): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? ""
-  return base ? `${base}${path}` : path
+/**
+ * 예산 API는 브라우저에서 Render로 직접 가지 않고, Next 라우트(`budget-mng/api/budget/*`)만 호출합니다.
+ * 원격 URL·`API_SERVER_BEARER_TOKEN`은 서버 프록시(`API_SERVER_BASE_URL`)에서만 사용합니다.
+ */
+function budgetProxyUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`
+  if (normalized.startsWith("/api/budget/")) {
+    return `/budget-mng${normalized}`
+  }
+  return normalized
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
   const text = await res.text()
-  if (!text) return `요청 실패 (${res.status})`
+  if (!text) return `Request failed (${res.status})`
   const trimmed = text.trim()
   if (
     trimmed.startsWith("<!DOCTYPE") ||
@@ -22,9 +28,9 @@ async function readErrorMessage(res: Response): Promise<string> {
     trimmed.startsWith("<HTML")
   ) {
     if (res.status === 404) {
-      return "API 경로를 찾을 수 없습니다(404). 백엔드 주소 설정 또는 API 라우트를 확인하세요."
+      return "API path not found (404). Check backend address or API route."
     }
-    return `서버가 HTML을 반환했습니다(${res.status}). API URL이 올바른지 확인하세요.`
+    return `Server returned HTML (${res.status}). Check if API URL is correct.`
   }
   try {
     const j = JSON.parse(text) as { message?: string; error?: string }
@@ -58,7 +64,7 @@ function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse
 
 /** GET /api/budget/monthly-default */
 export async function getMonthlyBudgetDefault(): Promise<GetMonthlyBudgetDefaultResponse> {
-  const res = await fetch(apiUrl("/api/budget/monthly-default"), {
+  const res = await fetch(budgetProxyUrl("/api/budget/monthly-default"), {
     credentials: "include",
   })
   if (!res.ok) {
@@ -72,7 +78,7 @@ export async function getMonthlyBudgetDefault(): Promise<GetMonthlyBudgetDefault
 export async function patchMonthlyBudgetDefault(
   body: PatchMonthlyBudgetDefaultBody,
 ): Promise<void> {
-  const res = await fetch(apiUrl("/api/budget/monthly-default"), {
+  const res = await fetch(budgetProxyUrl("/api/budget/monthly-default"), {
     method: "PATCH",
     headers: JSON_HEADERS,
     credentials: "include",
@@ -85,7 +91,7 @@ export async function patchMonthlyBudgetDefault(
 
 /** POST /api/budget/periods */
 export async function postBudgetPeriod(body: PostBudgetPeriodBody): Promise<void> {
-  const res = await fetch(apiUrl("/api/budget/periods"), {
+  const res = await fetch(budgetProxyUrl("/api/budget/periods"), {
     method: "POST",
     headers: JSON_HEADERS,
     credentials: "include",
