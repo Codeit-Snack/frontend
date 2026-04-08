@@ -20,7 +20,8 @@ interface MembersDeleteAccountModalProps {
   open: boolean;
   member: DeactivateMember | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (memberId: number) => void;
+  onConfirm: (memberId: number) => Promise<void>;
+  submitting?: boolean;
 }
 
 export function MembersDeleteAccountModal({
@@ -28,8 +29,18 @@ export function MembersDeleteAccountModal({
   member,
   onOpenChange,
   onConfirm,
+  submitting = false,
 }: MembersDeleteAccountModalProps) {
   if (!member) return null;
+
+  const handleConfirm = async () => {
+    if (submitting) return;
+    try {
+      await onConfirm(member.id);
+    } catch {
+      return;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,7 +59,7 @@ export function MembersDeleteAccountModal({
 
           <p className="mb-6 text-sm text-gray-600">
             {member.name}(<span className="text-[#E5762C]">{member.email}</span>)
-            님의 계정을 탈퇴시킬까요?
+            님의 계정을 탈퇴시키시겠어요?
           </p>
         </div>
 
@@ -57,21 +68,21 @@ export function MembersDeleteAccountModal({
             <Button
               type="button"
               variant="outlined"
+              disabled={submitting}
               className="h-[50px] flex-1 rounded-[12px] border-[#FDF0DF] bg-[#FDF0DF] hover:bg-[#fce8cf]"
             >
-              더 생각해볼게요
+              아니요
             </Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="solid"
-              className="h-[50px] flex-1 rounded-[12px]"
-              onClick={() => onConfirm(member.id)}
-            >
-              탈퇴시키기
-            </Button>
-          </DialogClose>
+          <Button
+            type="button"
+            variant="solid"
+            disabled={submitting}
+            className="h-[50px] flex-1 rounded-[12px]"
+            onClick={handleConfirm}
+          >
+            {submitting ? "처리 중..." : "탈퇴시키기"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
