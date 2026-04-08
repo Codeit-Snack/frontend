@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { getProductCategories, getProducts } from "../_lib/api"
+import { CATEGORIES, getSubCategoriesByCategoryId, SUB_CATEGORIES } from "@/data/categories"
+import { getProducts } from "../_lib/api"
 import type { Product, SortOption } from "../_lib/types"
 
 const DEFAULT_PAGE_SIZE = 12
@@ -10,7 +11,8 @@ export function useProducts() {
   const [keyword, setKeyword] = useState("")
   const [debouncedKeyword, setDebouncedKeyword] = useState("")
 
-  const [category, setCategory] = useState<string | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<number | null>(null)
   const [sort, setSort] = useState<SortOption>("latest")
   const [page, setPage] = useState(1)
 
@@ -18,8 +20,6 @@ export function useProducts() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [categories, setCategories] = useState<string[]>([])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -32,24 +32,11 @@ export function useProducts() {
   useEffect(() => {
     let cancelled = false
 
-    ;(async () => {
-      try {
-        const values = await getProductCategories()
-        if (cancelled) return
-        setCategories(values)
-      } catch {
-        if (cancelled) return
-        setCategories([])
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
+    const categoryForApi = selectedSubCategoryId
+      ? SUB_CATEGORIES.find((s) => s.id === selectedSubCategoryId)?.name
+      : undefined
+    const categoryIdForApi =
+      selectedCategoryId && !selectedSubCategoryId ? selectedCategoryId : undefined
 
     ;(async () => {
       try {
@@ -57,7 +44,8 @@ export function useProducts() {
         setError(null)
         const result = await getProducts({
           keyword: debouncedKeyword,
-          category: category ?? undefined,
+          category: categoryForApi,
+          categoryId: categoryIdForApi,
           sort,
           page,
           pageSize: DEFAULT_PAGE_SIZE,
@@ -78,7 +66,7 @@ export function useProducts() {
     return () => {
       cancelled = true
     }
-  }, [debouncedKeyword, category, sort, page])
+  }, [debouncedKeyword, selectedCategoryId, selectedSubCategoryId, sort, page])
 
   const sortLabel = useMemo(() => {
     switch (sort) {
@@ -100,8 +88,14 @@ export function useProducts() {
     setPage(1)
   }, [])
 
-  const handleSelectCategory = useCallback((next: string | null) => {
-    setCategory(next)
+  const handleSelectCategory = useCallback((categoryId: number | null) => {
+    setSelectedCategoryId(categoryId)
+    setSelectedSubCategoryId(null)
+    setPage(1)
+  }, [])
+
+  const handleSelectSubCategory = useCallback((subCategoryId: number | null) => {
+    setSelectedSubCategoryId(subCategoryId)
     setPage(1)
   }, [])
 
@@ -121,10 +115,20 @@ export function useProducts() {
     [],
   )
 
+  const subCategories = useMemo(
+    () =>
+      selectedCategoryId
+        ? getSubCategoriesByCategoryId(selectedCategoryId)
+        : [],
+    [selectedCategoryId],
+  )
+
   return {
     keyword,
-    category,
-    categories,
+    categories: CATEGORIES,
+    subCategories,
+    selectedCategoryId,
+    selectedSubCategoryId,
     sort,
     sortLabel,
     sortOptions,
@@ -136,7 +140,7 @@ export function useProducts() {
     setPage,
     setKeyword: handleChangeKeyword,
     setCategory: handleSelectCategory,
+    setSubCategory: handleSelectSubCategory,
     setSort: handleSelectSort,
   }
 }
-

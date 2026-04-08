@@ -4,6 +4,10 @@ import { useState } from "react";
 import CartItemList from "@/components/cart/cart-item-list";
 import CartSummary from "@/components/cart/cart-summary";
 import type { RequestItem } from "@/components/ui/dialog";
+import { Header } from "@/components/header";
+import { useAuthHeader } from "@/hooks/use-auth-header";
+import CartComplete from "@/components/cart/cart-complete";
+import { useDevice } from "@/hooks/use-device";
 
 const DUMMY_ITEMS = [
   { id: "1", image: "", category: "음료", name: "코카콜라 제로", price: 2000, quantity: 1, shipping: 3000, checked: true },
@@ -13,6 +17,7 @@ const DUMMY_ITEMS = [
 ];
 
 export default function CartPage() {
+  const { isLoggedIn, role } = useAuthHeader();
   const [items, setItems] = useState(DUMMY_ITEMS);
 
   const allChecked = items.every((item) => item.checked);
@@ -21,6 +26,10 @@ export default function CartPage() {
   const totalShipping = checkedItems.reduce((sum, item) => sum + item.shipping, 0);
   const totalPrice = totalProductPrice + totalShipping;
   const totalCount = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
+  const [showComplete, setShowComplete] = useState(false);
+  const [completeMessage, setCompleteMessage] = useState("");
+  const device = useDevice();
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
@@ -40,14 +49,32 @@ export default function CartPage() {
       prev.map((item) => item.id === id ? { ...item, quantity } : item)
     );
 
-  return (
-    <div className="min-h-screen bg-[#FBF8F4] min-w-[1280px]">
-      {/* 헤더 자리 */}
-      <header className="h-[80px] bg-white border-b border-gray-200" />
+  if (showComplete) {
+    return (
+      <CartComplete
+        items={requestItems}
+        totalCount={totalCount}
+        totalPrice={totalPrice}
+        message={completeMessage}
+        onBack={() => {
+          setItems((prev) => prev.filter((item) => !item.checked));
+          setShowComplete(false);
+        }}
+      />
+    );
+  }
 
-      <div className="max-w-[1920px] mx-auto py-10 px-[120px] overflow-x-auto">
+  return (
+    <div className="min-h-screen bg-[#FBF8F4]">
+      <Header
+        device={device}
+        isLoggedIn={isLoggedIn}
+        role={role}
+        cartCount={items.length}
+      />
+      <div className="max-w-[1920px] mx-auto py-10 px-6 lg:px-[120px]">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">장바구니</h1>
-        <div className="flex gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           <CartItemList
             items={items}
             allChecked={allChecked}
@@ -56,6 +83,11 @@ export default function CartPage() {
             onDeleteAll={deleteAll}
             onDeleteSelected={deleteSelected}
             onQuantityChange={changeQuantity}
+            onDeleteItem={deleteItem}
+            onComplete={(message) => {
+              setCompleteMessage(message);
+              setShowComplete(true);
+            }}
           />
           <CartSummary
             checkedCount={checkedItems.length}
@@ -64,6 +96,10 @@ export default function CartPage() {
             totalPrice={totalPrice}
             totalCount={totalCount}
             requestItems={requestItems}
+            onComplete={(message) => {
+              setCompleteMessage(message);
+              setShowComplete(true);
+            }}
           />
         </div>
       </div>

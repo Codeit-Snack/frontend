@@ -28,7 +28,7 @@ function roleFromAccessToken(token: string): string | null {
 
 /** API `membership.role` / JWT `role` → 헤더용 역할 */
 export function mapApiMembershipRoleToHeaderRole(
-  apiRole: string | undefined | null,
+  apiRole: string | undefined | null
 ): HeaderRole {
   const normalized = (apiRole ?? "")
     .toUpperCase()
@@ -45,7 +45,7 @@ export function mapApiMembershipRoleToHeaderRole(
  */
 export function persistMembershipRoleFromLoginData(
   data: Record<string, unknown>,
-  accessToken: string,
+  accessToken: string
 ): void {
   if (typeof window === "undefined") return;
 

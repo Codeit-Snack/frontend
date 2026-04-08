@@ -2,10 +2,15 @@
 
 import { ProductRegisterHeader } from "./_components/product-register-header";
 import { ProductRegisterTable } from "./_components/product-register-table";
+import { Header } from "@/components/header";
 import Pagination from "@/components/ui/pagination";
+import { useAuthHeader } from "@/hooks/use-auth-header";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useProductRegistrations } from "./_hooks/use-product-registrations";
 
 export default function ProductRegisterHistoryPage() {
+  const { isLoggedIn, role } = useAuthHeader();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const {
     page,
     sort,
@@ -20,7 +25,14 @@ export default function ProductRegisterHistoryPage() {
   } = useProductRegistrations();
 
   return (
-    <main className="px-8 py-10">
+    <div className="min-h-screen flex flex-col">
+      <Header
+        device={isMobile ? "mobile" : "pc"}
+        isLoggedIn={isLoggedIn}
+        role={role}
+        cartCount={2}
+      />
+      <main className="flex-1 bg-[#FBF8F4] px-8 py-10">
         <section className="mx-auto max-w-6xl">
           <ProductRegisterHeader
             sort={sort}
@@ -46,6 +58,7 @@ export default function ProductRegisterHistoryPage() {
             </div>
           )}
         </section>
-    </main>
+      </main>
+    </div>
   );
 }

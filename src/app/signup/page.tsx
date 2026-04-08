@@ -1,31 +1,56 @@
 "use client"
 
-import { FormEvent, useState } from "react"
 import Link from "next/link"
+import { FormEvent, useState } from "react"
 
-import { AuthGnb } from "@/components/auth/auth-gnb"
+import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
+import { cn } from "@/lib/utils"
 
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
 const inputClass =
   "h-[54px] w-full rounded-[16px] text-sm md:h-[64px] md:text-[20px]"
+const errorInputClass =
+  "border-[#F97B22] focus-visible:border-[#F97B22] focus-visible:ring-0"
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const passwordPattern = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/
+const passwordGuideText =
+  "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
-  const [passwordFocused, setPasswordFocused] = useState(false)
+  const [emailTouched, setEmailTouched] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
+  const normalizedEmail = email.trim()
+  const isEmailValid = emailPattern.test(normalizedEmail)
+  const isPasswordValid = passwordPattern.test(password)
+
+  const showEmailInvalid =
+    (emailTouched || submitted) &&
+    normalizedEmail.length > 0 &&
+    !isEmailValid
   const showPasswordRequired =
-    (passwordFocused || submitted) && password.trim().length === 0
-  const showPasswordMismatch =
-    passwordConfirm.length > 0 && password !== passwordConfirm
-  const canSubmit =
-    email.trim().length > 0 &&
+    (passwordTouched || submitted) && password.trim().length === 0
+  const showPasswordInvalid =
+    (passwordTouched || submitted) &&
     password.trim().length > 0 &&
+    !isPasswordValid
+  const showPasswordMismatch =
+    (submitted || passwordConfirm.length > 0) &&
+    passwordConfirm.trim().length > 0 &&
+    password !== passwordConfirm
+
+  const canSubmit =
+    normalizedEmail.length > 0 &&
+    isEmailValid &&
+    isPasswordValid &&
     passwordConfirm.trim().length > 0 &&
     password === passwordConfirm
 
@@ -36,12 +61,15 @@ export default function SignupPage() {
     if (!canSubmit) return
 
     // TODO: connect signup API
-    window.alert("가입 조건이 충족되었습니다.")
+    window.alert("회원가입 조건이 충족되었습니다.")
   }
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <AuthGnb />
+      <FullWidthCenterHeader
+        className="absolute left-0 top-0 z-10"
+        logoHref="/"
+      />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
 
@@ -61,39 +89,52 @@ export default function SignupPage() {
               placeholder="이메일을 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={inputClass}
+              className={cn(inputClass, showEmailInvalid && errorInputClass)}
               autoComplete="email"
+              inputMode="email"
               value={email}
+              onBlur={() => setEmailTouched(true)}
               onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={showEmailInvalid}
               required
             />
+            {showEmailInvalid && (
+              <p className="text_sm_medium text-[#F97B22]">
+                올바른 이메일 형식으로 입력해 주세요.
+              </p>
+            )}
           </div>
 
           <div className={fieldWrapperClass}>
             <label htmlFor="password" className="text_lg_medium black_black_400_t">
               비밀번호
             </label>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               placeholder="비밀번호를 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={`${inputClass} ${
-                passwordFocused || password.trim().length > 0 || showPasswordRequired
-                  ? "border-[#F97B22] focus-visible:border-[#F97B22] focus-visible:ring-0"
-                  : ""
-              }`}
+              className={cn(
+                inputClass,
+                (showPasswordRequired || showPasswordInvalid) && errorInputClass
+              )}
               autoComplete="new-password"
               value={password}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
+              onBlur={() => setPasswordTouched(true)}
               onChange={(event) => setPassword(event.target.value)}
+              aria-invalid={showPasswordRequired || showPasswordInvalid}
+              toggleLabel="password"
               required
             />
+            <p className="text_sm_medium gray_gray_500_t">{passwordGuideText}</p>
             {showPasswordRequired && (
-              <p className="text_sm_medium text-[#F97B22]">비밀번호를 입력해주세요</p>
+              <p className="text_sm_medium text-[#F97B22]">
+                비밀번호를 입력해 주세요.
+              </p>
+            )}
+            {showPasswordInvalid && (
+              <p className="text_sm_medium text-[#F97B22]">{passwordGuideText}</p>
             )}
           </div>
 
@@ -104,17 +145,18 @@ export default function SignupPage() {
             >
               비밀번호 확인
             </label>
-            <Input
+            <PasswordInput
               id="passwordConfirm"
               name="passwordConfirm"
-              type="password"
               placeholder="비밀번호를 다시 입력해 주세요"
               variant="outlined"
               inputSize="md"
-              className={inputClass}
+              className={cn(inputClass, showPasswordMismatch && errorInputClass)}
               autoComplete="new-password"
               value={passwordConfirm}
               onChange={(event) => setPasswordConfirm(event.target.value)}
+              aria-invalid={showPasswordMismatch}
+              toggleLabel="password confirmation"
               required
             />
             {showPasswordMismatch && (
@@ -134,9 +176,13 @@ export default function SignupPage() {
             시작하기
           </Button>
         </form>
+
         <p className="w-full max-w-[327px] text-center text_xs_regular gray_gray_500_t md:max-w-[640px]">
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="text_xs_semibold primary_orange_400_t">
+          <Link
+            href="/login"
+            className="text_xs_semibold text-[#F97B22] underline underline-offset-2"
+          >
             로그인
           </Link>
         </p>
