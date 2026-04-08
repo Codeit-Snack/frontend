@@ -7,19 +7,36 @@ import type {
   MemberRole,
   MemberRoleOption,
 } from "./types";
+import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com";
 const ENV_ORGANIZATION_ID = Number(process.env.NEXT_PUBLIC_ORGANIZATION_ID);
 let cachedOrganizationId: number | null = null;
+const REQUEST_TIMEOUT_MS = 15000;
 
 function parseErrorMessage(payload: unknown, fallback: string) {
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    return trimmed ? trimmed : fallback;
+  }
+
   if (!payload || typeof payload !== "object") return fallback;
+
+  const data =
+    "data" in (payload as Record<string, unknown>) &&
+    (payload as { data?: unknown }).data &&
+    typeof (payload as { data?: unknown }).data === "object"
+      ? ((payload as { data?: unknown }).data as Record<string, unknown>)
+      : null;
 
   const candidates = [
     (payload as { message?: unknown }).message,
     (payload as { error?: unknown }).error,
     (payload as { detail?: unknown }).detail,
+    data?.message,
+    data?.error,
+    data?.detail,
   ];
 
   const text = candidates.find((value) => typeof value === "string");
@@ -34,23 +51,55 @@ function getDataPayload(payload: unknown) {
   return payload;
 }
 
-async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("accessToken") ??
-        localStorage.getItem("token") ??
-        localStorage.getItem("authToken")
-      : null;
+function getAccessToken() {
+  if (typeof window === "undefined") return null;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  return (
+    localStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ??
+    localStorage.getItem("accessToken") ??
+    localStorage.getItem("token") ??
+    localStorage.getItem("authToken")
+  );
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return null;
+    const padded = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(padded);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAccessToken();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const hasBody = init?.body !== undefined;
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.");
+    }
+    throw new Error("네트워크 오류가 발생했습니다. 연결 상태를 확인해주세요.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const text = await response.text();
   let json: unknown = null;
@@ -138,6 +187,21 @@ async function resolveOrganizationId(explicitOrganizationId?: number) {
   if (Number.isFinite(ENV_ORGANIZATION_ID) && ENV_ORGANIZATION_ID > 0) {
     cachedOrganizationId = ENV_ORGANIZATION_ID;
     return ENV_ORGANIZATION_ID;
+  }
+
+  const token = getAccessToken();
+  if (token) {
+    const payload = decodeJwtPayload(token);
+    const tokenOrgId = Number(
+      payload?.organizationId ??
+        payload?.organization_id ??
+        payload?.orgId ??
+        payload?.org_id,
+    );
+    if (Number.isFinite(tokenOrgId) && tokenOrgId > 0) {
+      cachedOrganizationId = tokenOrgId;
+      return tokenOrgId;
+    }
   }
 
   const me = await requestApi<unknown>("/api/organizations/me");
