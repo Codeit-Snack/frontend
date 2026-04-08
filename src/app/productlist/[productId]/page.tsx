@@ -5,13 +5,14 @@ import { getProductById } from "../_lib/api"
 import { ProductListGlobalHeader } from "../_components/productlist-global-header"
 
 interface ProductDetailPageProps {
-  params: {
+  params: Promise<{
     productId: string
-  }
+  }>
 }
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
-  const productId = Number(params.productId)
+  const { productId: rawProductId } = await params; 
+  const productId = Number(rawProductId);
   if (!Number.isFinite(productId)) {
     notFound()
   }
@@ -41,7 +42,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   <Image
                     src={product.image}
                     alt={product.name}
-                    className="h-full w-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   <div className="h-full w-full bg-gray-200" />
