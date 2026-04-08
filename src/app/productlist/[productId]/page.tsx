@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getProductById } from "../_lib/api"
+import { ProductDetailPurchaseSection } from "../_components/product-detail-purchase-section"
 import { ProductListGlobalHeader } from "../_components/productlist-global-header"
 
 interface ProductDetailPageProps {
@@ -66,9 +67,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   {product.price.toLocaleString()}원
                 </p>
 
-                <div className="mt-8 rounded-2xl bg-gray-50 px-5 py-4 text-sm text-gray-600">
-                  목업 데이터 기반 상세 페이지입니다. 실제 API 연동 시 이 영역에 추가 정보(구매처, 옵션, 재고 등)를 붙일 수 있어요.
-                </div>
+                <ProductDetailPurchaseSection productName={product.name} unitPrice={product.price} />
+
+                <p className="mt-6 text-xs text-gray-400">
+                  목업 데이터 기반 상세입니다. 실제 연동 시 포인트·배송·장바구니 API에 맞게 교체할 수 있어요.
+                </p>
               </div>
             </div>
           </div>
