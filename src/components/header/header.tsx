@@ -77,6 +77,11 @@ export interface HeaderProps {
   role?: HeaderRole;
   cartCount?: number;
   className?: string;
+  /**
+   * 지정 시: 헤더 기본 좌우 패딩 대신 `px-6` + 이 클래스(예: `mx-auto w-full max-w-[1680px]`)로
+   * 본문 영역과 동일한 콘텐츠 너비 정렬 (상품 등록 내역 등).
+   */
+  contentContainerClassName?: string;
 }
 
 const NAV_BY_ROLE: Record<HeaderRole, { label: string; href: string; icon: React.ElementType }[]> = {
@@ -112,6 +117,10 @@ const GNB_LEFT_GAP = "gap-[72px]";
 const GNB_RIGHT_GAP = "gap-[80px]";
 /** 헤더 내부: PC(1920px~)에서만 최대 1680px·가운데 정렬 / 모바일·태블릿은 전체 너비 */
 const HEADER_CONTAINER_CLASS = "w-full min-[1920px]:max-w-[1680px] min-[1920px]:mx-auto";
+
+/** 좌우 패딩 없음 — `contentContainerClassName`으로 바깥 `px-6` + 안쪽 `max-w-[1680px]` 줄 때 사용 */
+const HEADER_HEIGHT_NO_PADDING =
+  "min-h-[54px] md:min-h-[64px] lg:min-h-[88px] flex items-center";
 
 /** 현재 경로가 해당 href와 일치하거나 하위 경로인지 */
 function isNavActive(pathname: string, href: string) {
@@ -201,6 +210,7 @@ interface MobileHeaderProps extends ClassNameProps {
   cartCount?: number;
   isLoggedIn?: boolean;
   userRole?: HeaderRole;
+  contentContainerClassName?: string;
 }
 
 export function MobileHeader({
@@ -208,20 +218,13 @@ export function MobileHeader({
   className = "",
   isLoggedIn = false,
   userRole = "member",
+  contentContainerClassName,
 }: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
   const navItems = NAV_BY_ROLE[userRole];
 
-  return (
-    <header
-      className={cn(
-        "background_background_400_b border-b border-gray-200",
-        HEADER_HEIGHT_CLASS,
-        "px-6",
-        className
-      )}
-    >
-      <div className={cn("flex items-center gap-6", HEADER_CONTAINER_CLASS)}>
+  const bar = (
+    <>
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -325,7 +328,25 @@ export function MobileHeader({
               <User className="w-6 h-6" />
             </Link>
           </div>
-      </div>
+    </>
+  );
+
+  return (
+    <header
+      className={cn(
+        "background_background_400_b border-b border-gray-200",
+        contentContainerClassName ? HEADER_HEIGHT_NO_PADDING : HEADER_HEIGHT_CLASS,
+        !contentContainerClassName && "px-6",
+        className
+      )}
+    >
+      {contentContainerClassName ? (
+        <div className="w-full px-6">
+          <div className={cn("flex items-center gap-6", contentContainerClassName)}>{bar}</div>
+        </div>
+      ) : (
+        <div className={cn("flex items-center gap-6", HEADER_CONTAINER_CLASS)}>{bar}</div>
+      )}
     </header>
   );
 }
@@ -333,53 +354,77 @@ export function MobileHeader({
 interface DetailHeaderProps extends ClassNameProps {
   showMenu?: boolean;
   cartCount?: number;
+  contentContainerClassName?: string;
 }
 
-export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProps) {
+export function DetailHeader({
+  cartCount = 0,
+  className = "",
+  contentContainerClassName,
+}: DetailHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.member;
-  return (
-    <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
-      <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
-        <div className={cn("flex items-center", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center">
-            <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
-          </Link>
-          <nav className={cn("flex", GNB_LEFT_GAP)}>
-            {items.map((item) => {
-              const active = isNavActive(pathname ?? "", item.href);
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    "text_xl_bold transition-colors",
-                    active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-        <div className={cn("flex items-center", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
-            Cart
-            {cartCount > 0 && (
-              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
-          </Link>
-          <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
-            Profile
-          </Link>
-          <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
-            Logout
-          </button>
-        </div>
+
+  const bar = (
+    <>
+      <div className={cn("flex items-center", GNB_LEFT_GAP)}>
+        <Link href="/" className="flex items-center">
+          <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
+        </Link>
+        <nav className={cn("flex", GNB_LEFT_GAP)}>
+          {items.map((item) => {
+            const active = isNavActive(pathname ?? "", item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={cn(
+                  "text_xl_bold transition-colors",
+                  active ? "primary_orange_400_t" : "gray_gray_400_t hover:!text-[var(--gray-gray-500)]"
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
+      <div className={cn("flex items-center", GNB_RIGHT_GAP)}>
+        <Link href="/cart" className="relative flex items-center gap-1 text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          Cart
+          {cartCount > 0 && (
+            <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
+              {cartCount > 99 ? "99+" : cartCount}
+            </span>
+          )}
+        </Link>
+        <Link href="/profile" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          Profile
+        </Link>
+        <button type="button" className="text_xl_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          Logout
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <header
+      className={cn(
+        "background_background_400_b border-b border-gray-200",
+        contentContainerClassName ? HEADER_HEIGHT_NO_PADDING : HEADER_HEIGHT_CLASS,
+        className
+      )}
+    >
+      {contentContainerClassName ? (
+        <div className="w-full px-6">
+          <div className={cn("flex min-w-0 items-center justify-between", contentContainerClassName)}>
+            {bar}
+          </div>
+        </div>
+      ) : (
+        <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>{bar}</div>
+      )}
     </header>
   );
 }
@@ -503,6 +548,7 @@ export function Header({
   role = "member",
   cartCount = 0,
   className = "",
+  contentContainerClassName,
 }: HeaderProps) {
   if (!isLoggedIn) {
     if (device === "mobile") return <CenterHeader className={className} />;
@@ -510,10 +556,23 @@ export function Header({
   }
   if (device === "mobile") {
     return (
-      <MobileHeader isLoggedIn userRole={role} cartCount={cartCount} className={className} />
+      <MobileHeader
+        isLoggedIn
+        userRole={role}
+        cartCount={cartCount}
+        className={className}
+        contentContainerClassName={contentContainerClassName}
+      />
     );
   }
-  if (role === "member") return <DetailHeader cartCount={cartCount} className={className} />;
+  if (role === "member")
+    return (
+      <DetailHeader
+        cartCount={cartCount}
+        className={className}
+        contentContainerClassName={contentContainerClassName}
+      />
+    );
   if (role === "admin") return <AdminHeader cartCount={cartCount} className={className} />;
   return <SuperAdminHeader cartCount={cartCount} className={className} />;
 }
