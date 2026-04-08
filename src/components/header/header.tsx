@@ -29,6 +29,10 @@ const LOGO_LABEL = "Snack";
 const LOGO_WHITE = "text-white text-3xl font-bold italic";
 const LOGO_ORANGE = "text-[var(--primary-orange-400)] text-2xl font-bold italic";
 
+/** 로고 클릭 시: 비로그인 → 랜딩(`/`), 로그인 후 → 상품 리스트 */
+const LOGO_HREF_LANDING = "/";
+const LOGO_HREF_PRODUCT_LIST = "/productlist";
+
 /** 로고 이미지 (실패 시 텍스트 폴백). width/height 지정 시 해당 크기로 표시 */
 function LogoImg({
   src,
@@ -143,7 +147,9 @@ export function LandingHeader({
           HEADER_CONTAINER_CLASS
         )}
       >
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link href={LOGO_HREF_LANDING} className="flex shrink-0 items-center" aria-label="홈으로">
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
         {actions.length > 0 ? (
           <div className="hidden items-center gap-3 md:flex md:gap-4">
             {actions.map((action) => (
@@ -166,7 +172,9 @@ export function LoginHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link href={LOGO_HREF_LANDING} className="flex shrink-0 items-center" aria-label="홈으로">
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
         <div className={cn("flex min-w-0 items-center justify-end", GNB_RIGHT_GAP)}>
           <Link
             href="/login"
@@ -192,7 +200,9 @@ export function CenterHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link href={LOGO_HREF_LANDING} className="flex items-center" aria-label="홈으로">
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
       </div>
     </header>
   );
@@ -202,7 +212,9 @@ export function FullWidthCenterHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link href={LOGO_HREF_LANDING} className="flex items-center" aria-label="홈으로">
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
       </div>
     </header>
   );
@@ -306,14 +318,19 @@ export function MobileHeader({
           </>
         )}
 
-        <LogoImg
-          src={LOGO_ORANGE_SRC}
-          alt="Snack"
-          width={80}
-          height={50}
-          variant="orange"
-          className="shrink-0"
-        />
+        <Link
+          href={isLoggedIn ? LOGO_HREF_PRODUCT_LIST : LOGO_HREF_LANDING}
+          className="flex shrink-0 items-center"
+          aria-label={isLoggedIn ? "상품 리스트로" : "홈으로"}
+        >
+          <LogoImg
+            src={LOGO_ORANGE_SRC}
+            alt="Snack"
+            width={80}
+            height={50}
+            variant="orange"
+          />
+        </Link>
         <div className="flex-1 min-w-0" aria-hidden />
         <div className="flex items-center gap-1 shrink-0">
             <Link
@@ -358,7 +375,7 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
             GNB_LEFT_GAP
           )}
         >
-          <Link href="/" className="flex shrink-0 items-center">
+          <Link href={LOGO_HREF_PRODUCT_LIST} className="flex shrink-0 items-center" aria-label="상품 리스트로">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex shrink-0 flex-nowrap", GNB_LEFT_GAP)}>
@@ -420,7 +437,7 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
     <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center shrink-0">
+          <Link href={LOGO_HREF_PRODUCT_LIST} className="flex shrink-0 items-center" aria-label="상품 리스트로">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>
@@ -473,7 +490,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
     <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center shrink-0">
+          <Link href={LOGO_HREF_PRODUCT_LIST} className="flex shrink-0 items-center" aria-label="상품 리스트로">
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>

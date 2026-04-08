@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { FormEvent, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ const inputClass =
   "h-[54px] w-full rounded-[16px] text-sm md:h-[64px] md:text-[20px]"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const canSubmit = email.trim().length > 0 && password.trim().length > 0
@@ -21,9 +23,8 @@ export default function LoginPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canSubmit) return
-
-    // TODO: connect login API
-    window.alert("로그인 조건이 충족되었습니다.")
+    // TODO: 로그인 API — 성공 시에만 이동
+    router.push("/productlist")
   }
 
   return (
