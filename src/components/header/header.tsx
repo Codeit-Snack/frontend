@@ -102,7 +102,7 @@ const NAV_BY_ROLE: Record<HeaderRole, { label: string; href: string; icon: React
     { label: "구매 요청 관리", href: "/admin/purchase-manage", icon: ClipboardList },
     { label: "구매 내역 확인", href: "/admin/purchase-history", icon: FileText },
     { label: "상품 등록 내역", href: "/product-register-history", icon: ShoppingBag },
-    { label: "관리", href: "/admin", icon: FileText },
+    { label: "관리", href: "/members", icon: FileText },
   ],
 };
 
