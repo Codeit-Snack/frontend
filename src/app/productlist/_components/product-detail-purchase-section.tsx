@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -13,10 +13,10 @@ interface ProductDetailPurchaseSectionProps {
   unitPrice: number
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex gap-4 border-b border-gray-100 py-3 text-sm last:border-b-0">
-      <span className="w-24 shrink-0 font-medium text-gray-500">{label}</span>
+    <div className="flex gap-3 border-b border-gray-100 py-2.5 text-xs last:border-b-0 lg:gap-4 lg:py-3 lg:text-sm">
+      <span className="w-20 shrink-0 font-medium text-gray-500 lg:w-24">{label}</span>
       <div className="min-w-0 flex-1 text-gray-800">{children}</div>
     </div>
   )
@@ -41,10 +41,10 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
   }
 
   return (
-    <div className="mt-8 space-y-6">
-      <div className="rounded-2xl border border-gray-100 bg-gray-50/80 px-5 py-1">
+    <div className="mt-6 space-y-4 lg:mt-8 lg:space-y-6">
+      <div className="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-1 lg:px-5">
         <DetailRow label="구매혜택">
-          <span className="font-semibold text-[var(--primary-orange-400,#E5762C)]">
+          <span className="font-semibold text-[var(--primary-orange-400)]">
             {expectedPoints.toLocaleString()}포인트
           </span>{" "}
           적립 예정
@@ -57,11 +57,13 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
         </DetailRow>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className={cn(
-          "flex h-12 w-full shrink-0 items-center justify-between rounded-xl border border-gray-200 bg-white px-4 sm:w-[120px]"
-        )}>
-          <span className="text-sm font-bold text-[#E5762C]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <div
+          className={cn(
+            "flex h-14 w-full shrink-0 items-center justify-between rounded-xl border border-gray-200 bg-white px-4 sm:h-12 sm:w-[120px] lg:h-12",
+          )}
+        >
+          <span className="text-sm font-bold text-[#E5762C] lg:text-base">
             {quantity}개
           </span>
           
@@ -91,18 +93,18 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
         <Button
           type="button"
           variant="solid"
-          className="h-12 min-w-0 flex-1 rounded-2xl px-6 text-base font-semibold sm:w-auto sm:min-w-[200px]"
+          className="h-14 w-full shrink-0 rounded-2xl px-6 text-base font-semibold !w-full sm:h-12 sm:!w-auto sm:min-w-[200px] sm:flex-1 lg:text-base"
           onClick={handleAddToCart}
         >
           장바구니 담기
         </Button>
       </div>
-      <div className="flex justify-between border-t border-gray-100 pt-4">
-        <span className="text-base font-medium text-gray-900">총 상품 금액</span>
-        <span className="text-xl font-bold text-gray-900">{lineTotal.toLocaleString()}원</span>
+      <div className="flex justify-between border-t border-gray-100 pt-3 lg:pt-4">
+        <span className="text-sm font-medium text-gray-900 lg:text-base">총 상품 금액</span>
+        <span className="text-lg font-bold text-gray-900 lg:text-xl">{lineTotal.toLocaleString()}원</span>
       </div>
       {cartMessage ? (
-        <p className="text-sm text-gray-600" role="status">
+        <p className="text-xs text-gray-600 lg:text-sm" role="status">
           {cartMessage}
         </p>
       ) : null}

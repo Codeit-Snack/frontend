@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { CONTENT_PADDING_X } from "@/components/header"
 import Pagination from "@/components/ui/pagination"
 import { ProductListAddProductButton } from "./_components/productlist-add-product-button"
 import { ProductRegisterModal } from "./_components/product-register-modal"
@@ -42,8 +43,8 @@ export default function ProductListPage() {
     <div className="min-h-screen flex flex-col bg-[#FBF8F4]">
       <ProductListGlobalHeader />
 
-      <main className="flex-1 px-8 py-10">
-        <section className="mx-auto max-w-6xl">
+      <main className={`flex-1 py-6 md:py-8 lg:py-10 ${CONTENT_PADDING_X}`}>
+        <section className="mx-auto max-w-7xl">
           <ProductListHeader
             keyword={keyword}
             onChangeKeyword={setKeyword}
