@@ -74,7 +74,7 @@ export function useMembers() {
   );
 
   const handleChangeRole = useCallback(
-    async (memberId: number, role: MemberRoleOption) => {
+    async (memberId: Member["id"], role: MemberRoleOption) => {
       try {
         setIsChangingRole(true);
         setError(null);
@@ -95,7 +95,7 @@ export function useMembers() {
   );
 
   const handleDeactivate = useCallback(
-    async (memberId: number) => {
+    async (memberId: Member["id"]) => {
       try {
         setIsDeactivating(true);
         setError(null);
