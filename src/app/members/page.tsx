@@ -65,7 +65,7 @@ export default function MembersPage() {
     setIsDeactivateModalOpen(true);
   };
 
-  const handleConfirmDeactivate = async (memberId: number) => {
+  const handleConfirmDeactivate = async (memberId: Member["id"]) => {
     try {
       await handleDeactivate(memberId);
       setIsDeactivateModalOpen(false);
@@ -86,7 +86,10 @@ export default function MembersPage() {
     setIsEditRoleModalOpen(true);
   };
 
-  const handleConfirmEditRole = async (memberId: number, role: "admin" | "member") => {
+  const handleConfirmEditRole = async (
+    memberId: Member["id"],
+    role: "admin" | "member"
+  ) => {
     try {
       await handleChangeRole(memberId, role);
       setIsEditRoleModalOpen(false);
