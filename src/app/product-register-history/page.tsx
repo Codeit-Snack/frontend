@@ -32,7 +32,6 @@ export default function ProductRegisterHistoryPage() {
         isLoggedIn
         role="member"
         cartCount={2}
-        contentContainerClassName={PRODUCT_REGISTER_CONTENT_WIDTH}
       />
       <main className="flex-1 bg-[#FBF8F4] pb-10 pt-6">
         <div className="px-6">
