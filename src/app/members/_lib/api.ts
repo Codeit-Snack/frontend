@@ -8,14 +8,13 @@ import type {
   MemberRole,
   MemberRoleOption,
 } from "./types";
+
 import {
   AUTH_ACCESS_TOKEN_KEY,
   AUTH_REFRESH_TOKEN_KEY,
 } from "@/lib/auth/constants";
 import { clearAuthSession } from "@/lib/auth/clear-session";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com";
+import { API_BASE_URL } from "@/lib/env";
 const ENV_ORGANIZATION_ID = Number(process.env.NEXT_PUBLIC_ORGANIZATION_ID);
 let cachedOrganizationId: number | null = null;
 const REQUEST_TIMEOUT_MS = 15000;
