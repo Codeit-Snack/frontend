@@ -4,13 +4,17 @@ import type {
   GetMembersResult,
   InviteMemberInput,
   Member,
+  MemberId,
   MemberRole,
   MemberRoleOption,
 } from "./types";
-import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com";
+import {
+  AUTH_ACCESS_TOKEN_KEY,
+  AUTH_REFRESH_TOKEN_KEY,
+} from "@/lib/auth/constants";
+import { clearAuthSession } from "@/lib/auth/clear-session";
+import { API_BASE_URL } from "@/lib/env";
 const ENV_ORGANIZATION_ID = Number(process.env.NEXT_PUBLIC_ORGANIZATION_ID);
 let cachedOrganizationId: number | null = null;
 const REQUEST_TIMEOUT_MS = 15000;
@@ -62,6 +66,97 @@ function getAccessToken() {
   );
 }
 
+function getRefreshToken() {
+  if (typeof window === "undefined") return null;
+
+  return (
+    localStorage.getItem(AUTH_REFRESH_TOKEN_KEY) ??
+    localStorage.getItem("refreshToken") ??
+    localStorage.getItem("refresh_token")
+  );
+}
+
+function extractTokens(payload: unknown): {
+  accessToken: string;
+  refreshToken: string | null;
+} | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const root = payload as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object"
+      ? (root.data as Record<string, unknown>)
+      : root;
+  const tokens =
+    data.tokens && typeof data.tokens === "object"
+      ? (data.tokens as Record<string, unknown>)
+      : data;
+
+  const accessToken =
+    (typeof tokens.accessToken === "string" && tokens.accessToken) ||
+    (typeof tokens.access_token === "string" && tokens.access_token) ||
+    (typeof data.accessToken === "string" && data.accessToken) ||
+    (typeof data.access_token === "string" && data.access_token) ||
+    null;
+
+  if (!accessToken) return null;
+
+  const refreshToken =
+    (typeof tokens.refreshToken === "string" && tokens.refreshToken) ||
+    (typeof tokens.refresh_token === "string" && tokens.refresh_token) ||
+    (typeof data.refreshToken === "string" && data.refreshToken) ||
+    (typeof data.refresh_token === "string" && data.refresh_token) ||
+    null;
+
+  return { accessToken, refreshToken };
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    const text = await res.text();
+    let json: unknown = null;
+    if (text) {
+      try {
+        json = JSON.parse(text) as unknown;
+      } catch {
+        json = text;
+      }
+    }
+
+    if (!res.ok) {
+      clearAuthSession();
+      return null;
+    }
+
+    const tokens = extractTokens(json);
+    if (!tokens) {
+      clearAuthSession();
+      return null;
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, tokens.accessToken);
+      if (tokens.refreshToken) {
+        localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, tokens.refreshToken);
+      }
+      window.dispatchEvent(new Event("snack-auth-changed"));
+    }
+
+    return tokens.accessToken;
+  } catch {
+    return null;
+  }
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const payloadPart = token.split(".")[1];
@@ -75,22 +170,31 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAccessToken();
+  let token = getAccessToken();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const hasBody = init?.body !== undefined;
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+  const execute = async (bearerToken: string | null) =>
+    fetch(`${API_BASE_URL}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {
         ...(hasBody ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         ...(init?.headers ?? {}),
       },
     });
+
+  let response: Response;
+  try {
+    response = await execute(token);
+    if (response.status === 401 && path !== "/api/auth/refresh") {
+      const nextAccessToken = await refreshAccessToken();
+      if (nextAccessToken) {
+        token = nextAccessToken;
+        response = await execute(token);
+      }
+    }
   } catch (error) {
     clearTimeout(timeout);
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -131,15 +235,37 @@ function toRoleEnum(role: MemberRoleOption) {
   return role === "admin" ? "ADMIN" : "MEMBER";
 }
 
-function toMember(item: unknown): Member {
+function toMemberId(value: unknown): MemberId | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+}
+
+function toMember(item: unknown): Member | null {
   const raw = (item ?? {}) as Record<string, unknown>;
+  const rawUser =
+    raw.user && typeof raw.user === "object"
+      ? (raw.user as Record<string, unknown>)
+      : null;
+  const id = toMemberId(raw.id ?? raw.memberId ?? raw.userId ?? rawUser?.id);
+  if (!id) return null;
 
   return {
-    id: Number(raw.id ?? raw.memberId ?? 0),
-    name: String(raw.name ?? raw.memberName ?? raw.displayName ?? ""),
-    email: String(raw.email ?? ""),
-    role: normalizeRole(raw.role),
-    active: Boolean(raw.active ?? true),
+    id,
+    name: String(
+      raw.name ??
+        raw.memberName ??
+        raw.displayName ??
+        rawUser?.name ??
+        rawUser?.displayName ??
+        "",
+    ),
+    email: String(raw.email ?? rawUser?.email ?? ""),
+    role: normalizeRole(raw.role ?? rawUser?.role),
+    active: Boolean(raw.active ?? raw.isActive ?? true),
   };
 }
 
@@ -234,7 +360,9 @@ export async function getMembers(
   );
 
   const rawMembers = toMemberArray(payload);
-  const members = rawMembers.map(toMember).filter((member) => member.id > 0);
+  const members = rawMembers
+    .map(toMember)
+    .filter((member): member is Member => member !== null);
   const normalizedKeyword = keyword.trim().toLowerCase();
   const filteredMembers = normalizedKeyword
     ? members.filter(
@@ -297,17 +425,23 @@ export async function inviteMember(input: InviteMemberInput) {
   });
 }
 
-export async function deactivateMember(memberId: number) {
-  await requestApi(`/api/organizations/members/${memberId}/deactivate`, {
-    method: "PATCH",
-  });
+export async function deactivateMember(memberId: MemberId) {
+  await requestApi(
+    `/api/organizations/members/${encodeURIComponent(String(memberId))}/deactivate`,
+    {
+      method: "PATCH",
+    },
+  );
 }
 
 export async function changeMemberRole(input: ChangeMemberRoleInput) {
-  await requestApi(`/api/organizations/members/${input.memberId}/role`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      role: toRoleEnum(input.role),
-    }),
-  });
+  await requestApi(
+    `/api/organizations/members/${encodeURIComponent(String(input.memberId))}/role`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        role: toRoleEnum(input.role),
+      }),
+    },
+  );
 }

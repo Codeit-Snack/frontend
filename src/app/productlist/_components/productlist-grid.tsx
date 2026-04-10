@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ProductCard } from "@/components/ui/card"
+import { ProductListProductCard } from "./productlist-product-card"
 import type { Product } from "../_lib/types"
 
 interface ProductListGridProps {
@@ -21,20 +21,14 @@ export function ProductListGrid({ products, loading = false }: ProductListGridPr
           조회된 상품이 없습니다.
         </div>
       ) : (
-        <div className="flex flex-wrap justify-start gap-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
           {products.map((product) => (
             <Link
               key={product.id}
               href={`/productlist/${product.id}`}
-              className="transition-transform hover:-translate-y-0.5"
+              className="block min-w-0 transition-transform hover:-translate-y-0.5"
             >
-              <ProductCard
-                image={product.image}
-                category={product.category}
-                purchaseCount={product.purchaseCount}
-                name={product.name}
-                price={product.price}
-              />
+              <ProductListProductCard product={product} />
             </Link>
           ))}
         </div>

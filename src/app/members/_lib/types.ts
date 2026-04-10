@@ -1,8 +1,9 @@
 export type MemberRole = "super_admin" | "admin" | "user";
 export type MemberRoleOption = "admin" | "member";
+export type MemberId = number | string;
 
 export interface Member {
-  id: number;
+  id: MemberId;
   name: string;
   email: string;
   role: MemberRole;
@@ -30,6 +31,6 @@ export interface InviteMemberInput {
 }
 
 export interface ChangeMemberRoleInput {
-  memberId: number;
+  memberId: MemberId;
   role: MemberRoleOption;
 }

@@ -9,9 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import type { Member } from "../_lib/types";
 
 interface DeactivateMember {
-  id: number;
+  id: Member["id"];
   name: string;
   email: string;
 }
@@ -20,7 +21,7 @@ interface MembersDeleteAccountModalProps {
   open: boolean;
   member: DeactivateMember | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (memberId: number) => Promise<void>;
+  onConfirm: (memberId: Member["id"]) => Promise<void>;
   submitting?: boolean;
 }
 

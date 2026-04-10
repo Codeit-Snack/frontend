@@ -21,6 +21,10 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 /** 로그인 PC GNB가 좁은 뷰포트에서 꽉 차기 전·줄바꿈 전에 모바일(햄버거) 헤더로 전환 — Tailwind `lg`와 동일 */
 const HEADER_USE_MOBILE_NAV_QUERY = "(max-width: 1023px)";
 
+/** 로고 클릭: 비로그인 → 랜딩, 로그인 후 → 상품 리스트 */
+const LOGO_HREF_LANDING = "/";
+const LOGO_HREF_PRODUCT_LIST = "/productlist";
+
 /** 주황 배경용 로고 (밝은색), 흰 배경용 로고 (주황). public/assets SVG 사용 */
 const LOGO_LIGHT_SRC = "/assets/snack_logo_light.svg";
 const LOGO_ORANGE_SRC = "/assets/snack_logo.svg";
@@ -156,6 +160,7 @@ interface LandingHeaderProps extends ClassNameProps {
   actions?: { href: string; label: string }[];
   /** 모바일에서 로고만 가운데, 액션은 md 이상에서만 표시 */
   centerLogoOnMobile?: boolean;
+  /** 기본: 랜딩(`/`) — 비로그인 헤더 */
   logoHref?: string;
 }
 
@@ -163,7 +168,7 @@ export function LandingHeader({
   className = "",
   actions = [],
   centerLogoOnMobile = false,
-  logoHref,
+  logoHref = LOGO_HREF_LANDING,
 }: LandingHeaderProps) {
   const logo = (
     <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
@@ -178,17 +183,13 @@ export function LandingHeader({
           HEADER_CONTAINER_CLASS
         )}
       >
-        {logoHref ? (
-          <Link
-            href={logoHref}
-            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-            aria-label="홈으로 이동"
-          >
-            {logo}
-          </Link>
-        ) : (
-          logo
-        )}
+        <Link
+          href={logoHref}
+          className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          aria-label="랜딩으로 이동"
+        >
+          {logo}
+        </Link>
         {actions.length > 0 ? (
           <div className="hidden items-center gap-4 md:flex lg:gap-6">
             {actions.map((action) => (
@@ -211,7 +212,13 @@ export function LoginHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link
+          href={LOGO_HREF_LANDING}
+          className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          aria-label="랜딩으로 이동"
+        >
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
         <div className={cn("flex min-w-0 items-center justify-end", GNB_RIGHT_GAP)}>
           <Link
             href="/login"
@@ -237,20 +244,26 @@ export function CenterHeader({ className = "" }: ClassNameProps) {
   return (
     <header className={cn("bg-[var(--primary-orange-400)]", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        <Link
+          href={LOGO_HREF_LANDING}
+          className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          aria-label="랜딩으로 이동"
+        >
+          <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
+        </Link>
       </div>
     </header>
   );
 }
 
 interface FullWidthCenterHeaderProps extends ClassNameProps {
-  /** 설정 시 로고 클릭 시 해당 경로로 이동 (예: 랜딩 `/`) */
+  /** 기본: 랜딩(`/`) — 로그인·회원가입 등 비로그인 헤더 */
   logoHref?: string;
 }
 
 export function FullWidthCenterHeader({
   className = "",
-  logoHref,
+  logoHref = LOGO_HREF_LANDING,
 }: FullWidthCenterHeaderProps) {
   const logo = (
     <LogoImg src={LOGO_LIGHT_SRC} alt="Snack" width={126} height={32} variant="light" />
@@ -259,17 +272,13 @@ export function FullWidthCenterHeader({
   return (
     <header className={cn("bg-[var(--primary-orange-400)] w-full", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-center", HEADER_CONTAINER_CLASS)}>
-        {logoHref ? (
-          <Link
-            href={logoHref}
-            className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-            aria-label="홈으로 이동"
-          >
-            {logo}
-          </Link>
-        ) : (
-          logo
-        )}
+        <Link
+          href={logoHref}
+          className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          aria-label="랜딩으로 이동"
+        >
+          {logo}
+        </Link>
       </div>
     </header>
   );
@@ -372,14 +381,19 @@ export function MobileHeader({
           </>
         )}
 
-        <LogoImg
-          src={LOGO_ORANGE_SRC}
-          alt="Snack"
-          width={80}
-          height={50}
-          variant="orange"
-          className="shrink-0"
-        />
+        <Link
+          href={isLoggedIn ? LOGO_HREF_PRODUCT_LIST : LOGO_HREF_LANDING}
+          className="inline-flex shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-orange-400)]"
+          aria-label={isLoggedIn ? "상품 리스트로 이동" : "랜딩으로 이동"}
+        >
+          <LogoImg
+            src={LOGO_ORANGE_SRC}
+            alt="Snack"
+            width={80}
+            height={50}
+            variant="orange"
+          />
+        </Link>
         <div className="flex-1 min-w-0" aria-hidden />
         <div className="flex items-center gap-1 shrink-0">
             <Link
@@ -424,7 +438,11 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
             GNB_LEFT_GAP
           )}
         >
-          <Link href="/" className="flex shrink-0 items-center">
+          <Link
+            href={LOGO_HREF_PRODUCT_LIST}
+            className="flex shrink-0 items-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-orange-400)]"
+            aria-label="상품 리스트로 이동"
+          >
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex shrink-0 flex-nowrap", GNB_LEFT_GAP)}>
@@ -484,7 +502,11 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
     <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center shrink-0">
+          <Link
+            href={LOGO_HREF_PRODUCT_LIST}
+            className="flex shrink-0 items-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-orange-400)]"
+            aria-label="상품 리스트로 이동"
+          >
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>
@@ -537,7 +559,11 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
     <header className={cn("background_background_400_b border-b border-gray-200", HEADER_HEIGHT_CLASS, className)}>
       <div className={cn("flex items-center justify-between min-w-0", HEADER_CONTAINER_CLASS)}>
         <div className={cn("flex items-center min-w-0 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden", GNB_LEFT_GAP)}>
-          <Link href="/" className="flex items-center shrink-0">
+          <Link
+            href={LOGO_HREF_PRODUCT_LIST}
+            className="flex shrink-0 items-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-orange-400)]"
+            aria-label="상품 리스트로 이동"
+          >
             <LogoImg src={LOGO_ORANGE_SRC} alt="Snack" width={126} height={32} variant="orange" />
           </Link>
           <nav className={cn("flex flex-nowrap shrink-0", GNB_LEFT_GAP)}>
@@ -586,6 +612,7 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
  * - 로그인 MO 회원/관리자/최고관리자 → MobileHeader
  * - 로그인 PC 회원/관리자/최고관리자 → DetailHeader / AdminHeader / SuperAdminHeader
  * - 로그인 상태에서 뷰포트가 `lg` 미만이면(1023px 이하) PC GNB 대신 항상 MobileHeader
+ * - 로고 링크: 비로그인 → `/`, 로그인 후 → `/productlist` (LandingHeader·FullWidthCenterHeader는 비로그인 기본 `/`)
  */
 export function Header({
   device,
