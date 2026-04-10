@@ -6,7 +6,7 @@ import type {
 } from "./types"
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://ec2-100-54-94-172.compute-1.amazonaws.com"
 
 function getAccessToken() {
   if (typeof window === "undefined") return null
@@ -71,6 +71,12 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
+    console.error("[budget-api] request failed", {
+      method: init?.method ?? "GET",
+      url: `${API_BASE_URL}${path}`,
+      status: response.status,
+      response: json,
+    })
     if (response.status === 401) {
       throw new Error("Unauthorized: 로그인 상태 또는 토큰을 확인해주세요.")
     }
@@ -115,9 +121,13 @@ export async function getMonthlyBudgetDefault(): Promise<GetMonthlyBudgetDefault
 export async function patchMonthlyBudgetDefault(
   body: PatchMonthlyBudgetDefaultBody,
 ): Promise<void> {
+  const compatibleBody = {
+    defaultMonthlyBudget: body.defaultMonthlyBudget,
+    default_monthly_budget: body.defaultMonthlyBudget,
+  }
   await requestApi("/api/budget/monthly-default", {
     method: "PATCH",
-    body: JSON.stringify(body),
+    body: JSON.stringify(compatibleBody),
   })
 }
 
