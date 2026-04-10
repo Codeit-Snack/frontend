@@ -61,12 +61,15 @@ async function serializeLoginRequestBody(
   return `{"email":${JSON.stringify(email)},"password":${JSON.stringify(password)},"invitationToken":${JSON.stringify(invitationToken)}}`;
 }
 
+/**
+ * `POST /api/auth/signup` — 최초 기업담당자(조직 생성) 가입 전용.
+ * 초대 링크 가입(`/signup` 등)과 구분됩니다.
+ */
 export type AdminSignupPayload = {
   email: string;
   password: string;
   displayName: string;
   organizationName: string;
-  orgType: string;
   businessNumber: string;
 };
 
@@ -218,7 +221,7 @@ export async function login(
 }
 
 /**
- * POST /api/auth/signup — 기업 담당자(관리자) 회원가입
+ * POST /api/auth/signup — 기업담당자 최초 회원가입
  */
 export async function signupAdmin(
   payload: AdminSignupPayload
@@ -237,7 +240,10 @@ export async function signupAdmin(
   const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, password }),
+    body: JSON.stringify({
+      ...payload,
+      password,
+    }),
   });
 
   if (res.status === 201) {
