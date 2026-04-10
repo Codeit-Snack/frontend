@@ -11,9 +11,6 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { signupAdmin } from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
 
-/** Swagger 예시와 동일 — 기업(사업자) 조직 유형 */
-const ORG_TYPE_BUSINESS = "BUSINESS"
-
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
 const inputClass =
@@ -82,7 +79,6 @@ export default function SuperAdminSignupPage() {
         password,
         displayName: managerName.trim(),
         organizationName: companyName.trim(),
-        orgType: ORG_TYPE_BUSINESS,
         businessNumber: businessNumber.trim(),
       })
 
