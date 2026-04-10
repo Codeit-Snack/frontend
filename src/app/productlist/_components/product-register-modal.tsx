@@ -40,8 +40,8 @@ function CategorySelect({
     : []
 
   return (
-    <div className="flex gap-3">
-      <div className="relative flex-1">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+      <div className="relative min-w-0 flex-1">
         <select
           value={selectedMainId ?? ""}
           onChange={(e) => {
@@ -63,7 +63,7 @@ function CategorySelect({
         </select>
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#E5762C]" />
       </div>
-      <div className="relative flex-1">
+      <div className="relative min-w-0 flex-1">
         <select
           value={selectedSubId ?? ""}
           onChange={(e) => {
@@ -105,7 +105,7 @@ export function ProductRegisterModal({ open, onOpenChange }: ProductRegisterModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[500px] p-8 sm:max-w-[90vw]">
+      <DialogContent className="max-h-[min(90dvh,90vh)] w-full max-w-[500px] overflow-y-auto p-6 lg:p-8">
         <DialogHeader>
           <DialogTitle>상품 등록</DialogTitle>
         </DialogHeader>

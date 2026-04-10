@@ -15,21 +15,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { Member } from "../_lib/types";
+import type { Member, MemberRoleOption } from "../_lib/types";
 
 interface MembersEditRoleModalProps {
   open: boolean;
   member: Member | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (memberId: number) => void;
+  onConfirm: (memberId: Member["id"], role: MemberRoleOption) => Promise<void>;
+  submitting?: boolean;
 }
 
-const roleOptions = [
+const roleOptions: { value: MemberRoleOption; label: string }[] = [
   { value: "admin", label: "관리자" },
   { value: "member", label: "일반" },
 ];
 
-function mapRoleToOption(role: Member["role"]) {
+function mapRoleToOption(role: Member["role"]): MemberRoleOption {
   return role === "super_admin" || role === "admin" ? "admin" : "member";
 }
 
@@ -38,9 +39,10 @@ export function MembersEditRoleModal({
   member,
   onOpenChange,
   onConfirm,
+  submitting = false,
 }: MembersEditRoleModalProps) {
   const roleId = useId();
-  const [selectedRole, setSelectedRole] = useState("member");
+  const [selectedRole, setSelectedRole] = useState<MemberRoleOption>("member");
 
   useEffect(() => {
     if (member) {
@@ -49,6 +51,15 @@ export function MembersEditRoleModal({
   }, [member]);
 
   if (!member) return null;
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    try {
+      await onConfirm(member.id, selectedRole);
+    } catch {
+      return;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -80,14 +91,19 @@ export function MembersEditRoleModal({
             </DialogField>
 
             <DialogField>
-              <DialogLabel htmlFor={roleId} className="mb-4 text-4 font-semibold text-[#1F1A14]">
+              <DialogLabel
+                htmlFor={roleId}
+                className="mb-4 text-4 font-semibold text-[#1F1A14]"
+              >
                 권한
               </DialogLabel>
               <div className="relative">
                 <select
                   id={roleId}
                   value={selectedRole}
-                  onChange={(event) => setSelectedRole(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedRole(event.target.value as MemberRoleOption)
+                  }
                   className="h-[58px] w-full appearance-none rounded-[16px] border border-[#FFD7BE] bg-white px-4 py-4 pr-12 text-xl text-[#1F1A14] outline-none transition focus:border-[#E5762C] focus:ring-1 focus:ring-[#E5762C]"
                 >
                   {roleOptions.map((role) => (
@@ -106,21 +122,21 @@ export function MembersEditRoleModal({
               <Button
                 type="button"
                 variant="outlined"
+                disabled={submitting}
                 className="h-[58px] flex-1 rounded-[16px] border-[#FFF3E5] bg-[#FFF3E5] text-4 font-semibold text-[#FF7B1A] hover:bg-[#FCE9CE]"
               >
                 취소
               </Button>
             </DialogClose>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="solid"
-                className="h-[58px] flex-1 rounded-[16px] text-4 font-semibold"
-                onClick={() => onConfirm(member.id)}
-              >
-                변경하기
-              </Button>
-            </DialogClose>
+            <Button
+              type="button"
+              variant="solid"
+              disabled={submitting}
+              className="h-[58px] flex-1 rounded-[16px] text-4 font-semibold"
+              onClick={handleSubmit}
+            >
+              {submitting ? "처리 중..." : "변경하기"}
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>

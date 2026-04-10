@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MembersHeader } from "./_components/members-header";
 import { MembersDeleteAccountModal } from "./_components/members-delete-account-modal";
 import { MembersEditRoleModal } from "./_components/members-edit-role-modal";
@@ -11,6 +11,10 @@ import { useMembers } from "./_hooks/use-members";
 import type { Member } from "./_lib/types";
 
 export default function MembersPage() {
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
@@ -29,6 +33,10 @@ export default function MembersPage() {
     error,
     setKeyword,
     setPage,
+    isInviting,
+    isChangingRole,
+    isDeactivating,
+    handleInvite,
     handleChangeRole,
     handleDeactivate,
   } = useMembers();
@@ -38,15 +46,39 @@ export default function MembersPage() {
     setPage(1);
   };
 
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+  };
+
   const handleOpenDeactivateModal = (member: Member) => {
     setSelectedDeactivateMember(member);
     setIsDeactivateModalOpen(true);
   };
 
-  const handleConfirmDeactivate = (memberId: number) => {
-    handleDeactivate(memberId);
-    setIsDeactivateModalOpen(false);
-    setSelectedDeactivateMember(null);
+  const handleConfirmDeactivate = async (memberId: Member["id"]) => {
+    try {
+      await handleDeactivate(memberId);
+      setIsDeactivateModalOpen(false);
+      setSelectedDeactivateMember(null);
+      showToast("success", "멤버 계정을 비활성화했습니다.");
+    } catch (actionError) {
+      showToast(
+        "error",
+        actionError instanceof Error
+          ? actionError.message
+          : "계정 탈퇴 처리에 실패했습니다.",
+      );
+    }
   };
 
   const handleOpenEditRoleModal = (member: Member) => {
@@ -54,14 +86,55 @@ export default function MembersPage() {
     setIsEditRoleModalOpen(true);
   };
 
-  const handleConfirmEditRole = (memberId: number) => {
-    handleChangeRole(memberId);
-    setIsEditRoleModalOpen(false);
-    setSelectedRoleMember(null);
+  const handleConfirmEditRole = async (
+    memberId: Member["id"],
+    role: "admin" | "member"
+  ) => {
+    try {
+      await handleChangeRole(memberId, role);
+      setIsEditRoleModalOpen(false);
+      setSelectedRoleMember(null);
+      showToast("success", "멤버 권한을 변경했습니다.");
+    } catch (actionError) {
+      showToast(
+        "error",
+        actionError instanceof Error
+          ? actionError.message
+          : "권한 변경에 실패했습니다.",
+      );
+    }
+  };
+
+  const handleConfirmInvite = async (payload: {
+    name: string;
+    email: string;
+    role: "admin" | "member";
+  }) => {
+    try {
+      await handleInvite(payload);
+      setIsInviteModalOpen(false);
+      showToast("success", "초대 메일을 전송했습니다.");
+    } catch (actionError) {
+      showToast(
+        "error",
+        actionError instanceof Error
+          ? actionError.message
+          : "회원 초대에 실패했습니다.",
+      );
+    }
   };
 
   return (
     <main className="px-4 pt-0 pb-6 min-[745px]:px-8 min-[745px]:pt-0 min-[745px]:pb-10">
+      {toast ? (
+        <div
+          className={`fixed right-4 top-4 z-50 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg min-[745px]:right-8 ${
+            toast.type === "success" ? "bg-[#18A058]" : "bg-[#E34D59]"
+          }`}
+        >
+          {toast.message}
+        </div>
+      ) : null}
       <section className="w-full">
         <MembersHeader
           keyword={keyword}
@@ -90,6 +163,8 @@ export default function MembersPage() {
         <MembersInviteModal
           open={isInviteModalOpen}
           onOpenChange={setIsInviteModalOpen}
+          onConfirm={handleConfirmInvite}
+          submitting={isInviting}
         />
         <MembersDeleteAccountModal
           open={isDeactivateModalOpen}
@@ -101,6 +176,7 @@ export default function MembersPage() {
             }
           }}
           onConfirm={handleConfirmDeactivate}
+          submitting={isDeactivating}
         />
         <MembersEditRoleModal
           open={isEditRoleModalOpen}
@@ -112,6 +188,7 @@ export default function MembersPage() {
             }
           }}
           onConfirm={handleConfirmEditRole}
+          submitting={isChangingRole}
         />
       </section>
     </main>

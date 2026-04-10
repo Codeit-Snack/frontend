@@ -1,7 +1,9 @@
 export type MemberRole = "super_admin" | "admin" | "user";
+export type MemberRoleOption = "admin" | "member";
+export type MemberId = number | string;
 
 export interface Member {
-  id: number;
+  id: MemberId;
   name: string;
   email: string;
   role: MemberRole;
@@ -19,4 +21,16 @@ export interface GetMembersResult {
   totalCount: number;
   totalPages: number;
   page: number;
+}
+
+export interface InviteMemberInput {
+  name: string;
+  email: string;
+  role: MemberRoleOption;
+  organizationId?: number;
+}
+
+export interface ChangeMemberRoleInput {
+  memberId: MemberId;
+  role: MemberRoleOption;
 }

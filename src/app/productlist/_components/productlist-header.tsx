@@ -44,7 +44,7 @@ export function ProductListHeader({
 
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <h1 className="text-3xl font-bold text-[#37352f]">상품 리스트</h1>
+      <h1 className="text-2xl font-bold text-[#37352f] lg:text-3xl">상품 리스트</h1>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <Input
