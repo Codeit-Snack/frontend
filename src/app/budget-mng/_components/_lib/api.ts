@@ -1,43 +1,86 @@
+import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants"
 import type {
   GetMonthlyBudgetDefaultResponse,
   PatchMonthlyBudgetDefaultBody,
   PostBudgetPeriodBody,
 } from "./types"
 
-const JSON_HEADERS = { "Content-Type": "application/json" } as const
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com"
 
-/**
- * 예산 API는 브라우저에서 Render로 직접 가지 않고, Next 라우트(`budget-mng/api/budget/*`)만 호출합니다.
- * 원격 URL·`API_SERVER_BEARER_TOKEN`은 서버 프록시(`API_SERVER_BASE_URL`)에서만 사용합니다.
- */
-function budgetProxyUrl(path: string): string {
-  const normalized = path.startsWith("/") ? path : `/${path}`
-  if (normalized.startsWith("/api/budget/")) {
-    return `/budget-mng${normalized}`
-  }
-  return normalized
+function getAccessToken() {
+  if (typeof window === "undefined") return null
+
+  return (
+    localStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ??
+    localStorage.getItem("accessToken") ??
+    localStorage.getItem("token") ??
+    localStorage.getItem("authToken")
+  )
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
-  const text = await res.text()
-  if (!text) return `Request failed (${res.status})`
-  const trimmed = text.trim()
-  if (
-    trimmed.startsWith("<!DOCTYPE") ||
-    trimmed.startsWith("<html") ||
-    trimmed.startsWith("<HTML")
-  ) {
-    if (res.status === 404) {
-      return "API path not found (404). Check backend address or API route."
+function parseErrorMessage(payload: unknown, fallback: string) {
+  if (typeof payload === "string") {
+    const trimmed = payload.trim()
+    return trimmed ? trimmed : fallback
+  }
+
+  if (!payload || typeof payload !== "object") return fallback
+
+  const data =
+    "data" in (payload as Record<string, unknown>) &&
+    (payload as { data?: unknown }).data &&
+    typeof (payload as { data?: unknown }).data === "object"
+      ? ((payload as { data?: unknown }).data as Record<string, unknown>)
+      : null
+
+  const candidates = [
+    (payload as { message?: unknown }).message,
+    (payload as { error?: unknown }).error,
+    (payload as { detail?: unknown }).detail,
+    data?.message,
+    data?.error,
+    data?.detail,
+  ]
+
+  const text = candidates.find((value) => typeof value === "string")
+  return text ?? fallback
+}
+
+async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAccessToken()
+  const hasBody = init?.body !== undefined
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  const text = await response.text()
+  let json: unknown = null
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown
+    } catch {
+      json = text
     }
-    return `Server returned HTML (${res.status}). Check if API URL is correct.`
   }
-  try {
-    const j = JSON.parse(text) as { message?: string; error?: string }
-    return j.message ?? j.error ?? text
-  } catch {
-    return text.length > 200 ? `${text.slice(0, 200)}…` : text
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Unauthorized: 로그인 상태 또는 토큰을 확인해주세요.")
+    }
+    if (response.status === 403) {
+      throw new Error("권한이 없습니다. super_admin 권한이 필요합니다.")
+    }
+    throw new Error(parseErrorMessage(json, "요청 처리에 실패했습니다."))
   }
+
+  return json as T
 }
 
 function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse {
@@ -64,40 +107,24 @@ function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse
 
 /** GET /api/budget/monthly-default */
 export async function getMonthlyBudgetDefault(): Promise<GetMonthlyBudgetDefaultResponse> {
-  const res = await fetch(budgetProxyUrl("/api/budget/monthly-default"), {
-    credentials: "include",
-  })
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
-  }
-  const json: unknown = await res.json()
-  return normalizeMonthlyDefault(json)
+  const payload = await requestApi<unknown>("/api/budget/monthly-default")
+  return normalizeMonthlyDefault(payload)
 }
 
 /** PATCH /api/budget/monthly-default */
 export async function patchMonthlyBudgetDefault(
   body: PatchMonthlyBudgetDefaultBody,
 ): Promise<void> {
-  const res = await fetch(budgetProxyUrl("/api/budget/monthly-default"), {
+  await requestApi("/api/budget/monthly-default", {
     method: "PATCH",
-    headers: JSON_HEADERS,
-    credentials: "include",
     body: JSON.stringify(body),
   })
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
-  }
 }
 
 /** POST /api/budget/periods */
 export async function postBudgetPeriod(body: PostBudgetPeriodBody): Promise<void> {
-  const res = await fetch(budgetProxyUrl("/api/budget/periods"), {
+  await requestApi("/api/budget/periods", {
     method: "POST",
-    headers: JSON_HEADERS,
-    credentials: "include",
     body: JSON.stringify(body),
   })
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
-  }
 }

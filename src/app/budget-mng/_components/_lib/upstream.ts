@@ -6,7 +6,7 @@ function upstreamBase(): string | null {
   return raw.replace(/\/$/, "")
 }
 
-/** Swagger·로그인 API에서 받은 액세스 토큰(해당 서버가 서명 검증에 쓰는 값). */
+/** The access token received from the Swagger login API (the value used for signature verification by the server). */
 function bearer(): string | null {
   let t = process.env.API_SERVER_BEARER_TOKEN?.trim()
   if (!t) return null
@@ -21,8 +21,8 @@ export function isUpstreamConfigured(): boolean {
 }
 
 /**
- * `API_SERVER_BASE_URL`이 없으면 null (라우트에서 스텁 처리).
- * 있으면 원격으로 그대로 전달합니다.
+ * `API_SERVER_BASE_URL` doesn't exist, return null (stubbed in the route).
+ * If it exists, forward it remotely.
  */
 export async function proxyToUpstream(
   request: Request,
