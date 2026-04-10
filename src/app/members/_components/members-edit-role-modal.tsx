@@ -21,7 +21,7 @@ interface MembersEditRoleModalProps {
   open: boolean;
   member: Member | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (memberId: number, role: MemberRoleOption) => Promise<void>;
+  onConfirm: (memberId: Member["id"], role: MemberRoleOption) => Promise<void>;
   submitting?: boolean;
 }
 

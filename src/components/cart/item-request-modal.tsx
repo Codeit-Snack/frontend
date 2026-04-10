@@ -39,35 +39,22 @@ export default function ItemRequestModal({
 }: ItemRequestModalProps) {
   const [message, setMessage] = useState("");
 
-  const handleConfirm = () => {
-    if (items.length === 0) return;
-
-    const newRequest = {
-      id: crypto.randomUUID(),
-      requestDate: new Date().toLocaleDateString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).replace(/\. /g, ".").replace(/\.$/, ""),
-      productSummary:
-        items.length === 1
-          ? items[0].name
-          : `${items[0].name} 외 ${items.length - 1}건`,
-      totalQuantity: totalCount,
-      totalAmount: totalPrice,
-      status: "pending",
-      imageUrl: items[0]?.image ?? "",
-    };
-
-    const existing = JSON.parse(
-      localStorage.getItem("purchaseRequests") ?? "[]"
-    );
-    localStorage.setItem(
-      "purchaseRequests",
-      JSON.stringify([newRequest, ...existing])
-    );
-    onComplete?.(message);
-  };
+const handleConfirm = async () => {
+  if (items.length === 0) return;
+  try {
+    const res = await fetch("/api/purchase-requests", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestMessage: message }),
+    });
+    if (!res.ok) throw new Error("구매 요청 실패");
+  } catch (e) {
+    console.error(e);
+    return;
+  }
+  onComplete?.(message);
+};
 
   return (
     <Dialog>

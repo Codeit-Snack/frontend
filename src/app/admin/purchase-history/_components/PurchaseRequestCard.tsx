@@ -12,7 +12,6 @@ const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
   approved: "승인 완료",
 };
 
-/** 날짜를 "2024. 07. 04" 형식으로 */
 function formatDateDisplay(dateStr: string) {
   return dateStr.replace(/\.\s*/g, ". ");
 }
@@ -35,11 +34,10 @@ export function PurchaseRequestCard({
     <div
       className={cn(
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
-        className,
+        className
       )}
-      onClick={() => router.push("/purchase-request-detail")}
+      onClick={() => router.push("/admin/purchase-history/detail")}
     >
-      {/* 상단: 상품 정보 + 요청 취소 버튼 */}
       <div className="flex items-start gap-3 mb-6">
         <div className="relative h-[80px] w-[80px] shrink-0 overflow-hidden rounded-[8px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white p-4">
           {item.imageUrl ? (
@@ -85,7 +83,6 @@ export function PurchaseRequestCard({
         )}
       </div>
 
-      {/* 주문금액 */}
       <div className="flex items-center justify-between">
         <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
           주문금액
@@ -95,10 +92,8 @@ export function PurchaseRequestCard({
         </span>
       </div>
 
-      {/* 구분선 */}
       <div className="my-4 border-t border-[var(--gray-gray-200)]" />
 
-      {/* 구매요청일 / 상태 */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--black-black-100,#6B6B6B)]">
@@ -115,10 +110,9 @@ export function PurchaseRequestCard({
           <span
             className={cn(
               "font-[Pretendard] text-[14px] font-normal leading-[22px]",
-              item.status === "pending" &&
-                "text-[var(--black-black-100,#6B6B6B)]",
+              item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
               (item.status === "rejected" || item.status === "approved") &&
-                "text-[var(--gray-gray-400,#ABABAB)]",
+                "text-[var(--gray-gray-400,#ABABAB)]"
             )}
           >
             {STATUS_LABEL[item.status]}
