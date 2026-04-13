@@ -23,20 +23,24 @@ function formatPrice(price: number) {
   return price.toLocaleString("ko-KR");
 }
 
-function productHref(link: string) {
+function productHref(link: string | null) {
+  if (!link?.trim()) return null;
   const raw = link.trim();
   if (/^https?:\/\//i.test(raw)) return raw;
   return `https://${raw}`;
 }
 
 /** 화면 표시용: 프로토콜 제거 후 앞부분만 두고 … (시안 www.codeit… 형태) */
-function shortenProductLinkLabel(link: string, headChars = 10): string {
+function shortenProductLinkLabel(link: string | null, headChars = 10): string {
+  if (!link?.trim()) return "-";
   const s = link.trim().replace(/^https?:\/\//i, "");
   if (s.length <= headChars) return s;
   return `${s.slice(0, headChars)}...`;
 }
 
 function ProductCard({ item }: { item: ProductRegistration }) {
+  const href = productHref(item.productLink);
+
   return (
     <article className="min-w-0">
       <div className="flex gap-3 py-3">
@@ -75,20 +79,24 @@ function ProductCard({ item }: { item: ProductRegistration }) {
         <div className="flex items-center justify-between gap-4 py-3">
           <dt className="shrink-0 text_sm_medium gray_gray_500_t">제품 링크</dt>
           <dd className="flex min-w-0 flex-1 justify-end">
-            <a
-              href={productHref(item.productLink)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={item.productLink}
-              className="inline-flex max-w-full shrink-0 items-center gap-2"
-            >
-              <span className="text_sm_medium black_black_300_t">
-                {shortenProductLinkLabel(item.productLink)}
-              </span>
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-orange-400)] text-white">
-                <Link2 className="size-3.5" strokeWidth={2.5} aria-hidden />
-              </span>
-            </a>
+            {href ? (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={item.productLink ?? ""}
+                className="inline-flex max-w-full shrink-0 items-center gap-2"
+              >
+                <span className="text_sm_medium black_black_300_t">
+                  {shortenProductLinkLabel(item.productLink)}
+                </span>
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--primary-orange-400)] text-white">
+                  <Link2 className="size-3.5" strokeWidth={2.5} aria-hidden />
+                </span>
+              </a>
+            ) : (
+              <span className="text_sm_medium gray_gray_500_t">-</span>
+            )}
           </dd>
         </div>
       </dl>
@@ -160,7 +168,9 @@ export function ProductRegisterTable({
             ) : (
               items.map((item) => (
                 <TableRow key={item.id} className="border-t border-[#E0E0E0]">
-                  <TableCell className="text-gray-700">{item.registeredAt}</TableCell>
+                  <TableCell className="text-gray-700">
+                    {item.registeredAt}
+                  </TableCell>
                   <TableCell>
                     <Link
                       href={`/products/${item.id}`}
@@ -185,16 +195,20 @@ export function ProductRegisterTable({
                     {formatPrice(item.price)}
                   </TableCell>
                   <TableCell>
-                    <Link
-                      href={productHref(item.productLink)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={item.productLink}
-                      className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-900"
-                    >
-                      <span>{shortenProductLinkLabel(item.productLink)}</span>
-                      <ExternalLink className="size-4 shrink-0" aria-hidden />
-                    </Link>
+                    {productHref(item.productLink) ? (
+                      <a
+                        href={productHref(item.productLink) ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={item.productLink ?? ""}
+                        className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-900"
+                      >
+                        <span>{shortenProductLinkLabel(item.productLink)}</span>
+                        <ExternalLink className="size-4 shrink-0" aria-hidden />
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
