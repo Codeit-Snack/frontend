@@ -349,15 +349,7 @@ export async function getMembers(
   params: GetMembersParams = {},
 ): Promise<GetMembersResult> {
   const { keyword = "", page = 1, pageSize = 6 } = params;
-  const query = new URLSearchParams({
-    keyword,
-    page: String(page),
-    pageSize: String(pageSize),
-  });
-
-  const payload = await requestApi<unknown>(
-    `/api/organizations/members?${query.toString()}`,
-  );
+  const payload = await requestApi<unknown>("/api/organizations/members");
 
   const rawMembers = toMemberArray(payload);
   const members = rawMembers
