@@ -412,6 +412,79 @@ export async function getMembers(
   };
 }
 
+/** 내 프로필 화면용 (GET /api/auth/me 응답에서 추출) */
+export type MyOrganizationProfile = {
+  companyName: string;
+  userName: string;
+  email: string;
+};
+
+function parseOrganizationMePayload(data: unknown): MyOrganizationProfile {
+  const empty: MyOrganizationProfile = {
+    companyName: "",
+    userName: "",
+    email: "",
+  };
+  if (!data || typeof data !== "object") return empty;
+  const r = data as Record<string, unknown>;
+
+  const membership =
+    r.membership && typeof r.membership === "object"
+      ? (r.membership as Record<string, unknown>)
+      : null;
+
+  const organization =
+    (r.organization && typeof r.organization === "object"
+      ? (r.organization as Record<string, unknown>)
+      : null) ??
+    (membership?.organization && typeof membership.organization === "object"
+      ? (membership.organization as Record<string, unknown>)
+      : null);
+
+  const companyName = String(
+    organization?.name ??
+      organization?.organizationName ??
+      r.organizationName ??
+      r.companyName ??
+      "",
+  );
+
+  const user =
+    (r.user && typeof r.user === "object"
+      ? (r.user as Record<string, unknown>)
+      : null) ??
+    (membership?.user && typeof membership.user === "object"
+      ? (membership.user as Record<string, unknown>)
+      : null);
+
+  const userName = String(
+    user?.displayName ??
+      user?.name ??
+      r.displayName ??
+      r.name ??
+      r.memberName ??
+      membership?.displayName ??
+      membership?.name ??
+      "",
+  );
+
+  const email = String(
+    user?.email ?? r.email ?? membership?.email ?? "",
+  );
+
+  return { companyName, userName, email };
+}
+
+/**
+ * 로그인한 사용자의 조직·계정 표시 정보.
+ * `GET /api/auth/me`
+ */
+export async function fetchMyOrganizationProfile(): Promise<MyOrganizationProfile> {
+  const payload = await requestApi<unknown>("/api/auth/me");
+  const data = getDataPayload(payload);
+  return parseOrganizationMePayload(data);
+}
+
 export async function inviteMember(input: InviteMemberInput) {
   const organizationId = await resolveOrganizationId(input.organizationId);
 

@@ -253,3 +253,150 @@ export async function signupAdmin(
   const message = await readErrorMessage(res);
   return { ok: false, message };
 }
+
+/** 초대 수락 회원가입 (`POST /api/invitations/signup`) */
+export type InvitationSignupPayload = {
+  email: string;
+  password: string;
+  invitationToken: string;
+};
+
+function pickEmailFromRecord(o: Record<string, unknown>): string | null {
+  const raw =
+    (typeof o.email === "string" && o.email) ||
+    (typeof o.inviteeEmail === "string" && o.inviteeEmail) ||
+    (typeof o.invitedEmail === "string" && o.invitedEmail) ||
+    (typeof o.invitee_email === "string" && o.invitee_email) ||
+    null;
+  const trimmed = raw?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * 초대 토큰으로 가입 대상 이메일 조회.
+ * 백엔드에 `GET /api/invitations/signup?invitationToken=…`가 없으면 404/405 등으로 실패하며, 클라이언트는 JWT 등 다른 방식으로 보완합니다.
+ */
+export async function fetchInvitationSignupPreview(
+  invitationToken: string
+): Promise<{ ok: true; email: string } | { ok: false }> {
+  const t = normalizeInvitationToken(invitationToken);
+  if (!t) return { ok: false };
+
+  const url = new URL(`${API_BASE_URL}/api/invitations/signup`);
+  url.searchParams.set("invitationToken", t);
+
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { method: "GET" });
+  } catch {
+    return { ok: false };
+  }
+
+  if (!res.ok) return { ok: false };
+
+  try {
+    const body: unknown = await res.json();
+    if (!body || typeof body !== "object") return { ok: false };
+    const root = body as Record<string, unknown>;
+    let data: Record<string, unknown> | null = null;
+    if (root.success === true && root.data && typeof root.data === "object") {
+      data = root.data as Record<string, unknown>;
+    } else if (typeof root.data === "object" && root.data !== null) {
+      data = root.data as Record<string, unknown>;
+    } else {
+      data = root;
+    }
+    const email = pickEmailFromRecord(data);
+    if (email) return { ok: true, email };
+  } catch {
+    return { ok: false };
+  }
+
+  return { ok: false };
+}
+
+/**
+ * POST /api/invitations/signup — 초대를 통한 일반·관리자(조직원) 가입
+ * 응답에 토큰이 있으면 로그인과 동일하게 세션에 저장합니다.
+ */
+export async function signupWithInvitation(
+  payload: InvitationSignupPayload
+): Promise<
+  { ok: true; sessionStarted: boolean } | { ok: false; message: string }
+> {
+  const token = normalizeInvitationToken(payload.invitationToken);
+  if (!token) {
+    return { ok: false, message: "유효한 초대 정보가 없습니다." };
+  }
+
+  let password: string;
+  try {
+    password = await encryptPasswordForTransportIfConfigured(payload.password);
+  } catch (e) {
+    const msg =
+      e instanceof Error
+        ? e.message
+        : "비밀번호 처리 중 오류가 발생했습니다.";
+    return { ok: false, message: msg };
+  }
+
+  const res = await fetch(`${API_BASE_URL}/api/invitations/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: payload.email.trim(),
+      password,
+      invitationToken: token,
+    }),
+  });
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // ignore
+  }
+
+  if (res.ok && (res.status === 201 || res.status === 200)) {
+    if (body && typeof body === "object") {
+      const o = body as Record<string, unknown>;
+      if (o.success === false) {
+        // 본문이 실패 응답인 경우 아래 공통 오류 처리로 넘깁니다.
+      } else {
+        const data =
+          o.data && typeof o.data === "object"
+            ? (o.data as Record<string, unknown>)
+            : o;
+        const pair = extractTokensFromLoginData(data);
+        if (pair) {
+          persistAuthTokens(pair.accessToken, pair.refreshToken);
+          persistMembershipRoleFromLoginData(data, pair.accessToken);
+          return { ok: true, sessionStarted: true };
+        }
+        return { ok: true, sessionStarted: false };
+      }
+    } else {
+      return { ok: true, sessionStarted: false };
+    }
+  }
+
+  if (body && typeof body === "object") {
+    const o = body as Record<string, unknown>;
+    if (isGenericInternalFailure(res.status, o)) {
+      return { ok: false, message: SERVER_ERROR_HINT_KO };
+    }
+    if (typeof o.message === "string") return { ok: false, message: o.message };
+    if (Array.isArray(o.message)) {
+      return { ok: false, message: o.message.map(String).join(", ") };
+    }
+    if (typeof o.detail === "string") return { ok: false, message: o.detail };
+  }
+
+  return {
+    ok: false,
+    message:
+      res.status >= 500
+        ? SERVER_ERROR_HINT_KO
+        : `요청에 실패했습니다. (${res.status})`,
+  };
+}
