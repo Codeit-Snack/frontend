@@ -95,9 +95,14 @@ export const BudgetForm = ({
       console.log(
         `year: ${periodPayload.year}, month: ${periodPayload.month}, budgetAmount: ${periodPayload.budgetAmount.toLocaleString()}`,
       )
+      console.log("[budget] periodPayload(JSON):", JSON.stringify(periodPayload))
       console.log("매달 시작 예산:")
       console.log(
         `defaultMonthlyBudget: ${monthlyDefaultPayload.defaultMonthlyBudget.toLocaleString()}`,
+      )
+      console.log(
+        "[budget] monthlyDefaultPayload(JSON):",
+        JSON.stringify(monthlyDefaultPayload),
       )
 
       await patchMonthlyBudgetDefault(monthlyDefaultPayload)

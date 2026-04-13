@@ -6,15 +6,37 @@ function buildHeaders(req: Request): Headers {
   const headers = new Headers()
   const authorization = req.headers.get("authorization")
   if (authorization) headers.set("authorization", authorization)
+  const organizationId = req.headers.get("x-organization-id")
+  if (organizationId) headers.set("x-organization-id", organizationId)
   const contentType = req.headers.get("content-type")
   if (contentType) headers.set("content-type", contentType)
   return headers
 }
 
+function logAuthForward(meta: {
+  method: string
+  path: string
+  hasIncomingAuthorization: boolean
+  hasForwardAuthorization: boolean
+  incomingOrganizationId: string | null
+  forwardOrganizationId: string | null
+}) {
+  console.info("[budget-proxy] auth-forward-check", meta)
+}
+
 export async function GET(req: Request) {
+  const headers = buildHeaders(req)
+  logAuthForward({
+    method: "GET",
+    path: "/api/budget/monthly-default",
+    hasIncomingAuthorization: Boolean(req.headers.get("authorization")),
+    hasForwardAuthorization: Boolean(headers.get("authorization")),
+    incomingOrganizationId: req.headers.get("x-organization-id"),
+    forwardOrganizationId: headers.get("x-organization-id"),
+  })
   const upstream = await fetch(`${API_BASE_URL}/api/budget/monthly-default`, {
     method: "GET",
-    headers: buildHeaders(req),
+    headers,
   })
 
   const text = await upstream.text()
@@ -37,9 +59,18 @@ export async function PATCH(req: Request) {
     )
   }
 
+  const headers = buildHeaders(req)
+  logAuthForward({
+    method: "PATCH",
+    path: "/api/budget/monthly-default",
+    hasIncomingAuthorization: Boolean(req.headers.get("authorization")),
+    hasForwardAuthorization: Boolean(headers.get("authorization")),
+    incomingOrganizationId: req.headers.get("x-organization-id"),
+    forwardOrganizationId: headers.get("x-organization-id"),
+  })
   const upstream = await fetch(`${API_BASE_URL}/api/budget/monthly-default`, {
     method: "PATCH",
-    headers: buildHeaders(req),
+    headers,
     body,
   })
 
