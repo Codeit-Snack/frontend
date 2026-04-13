@@ -1,14 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { FormEvent, Suspense, useEffect, useState } from "react"
 
 import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
-import { signupAdmin } from "@/lib/api/auth"
+import {
+  fetchInvitationSignupPreview,
+  signupWithInvitation,
+} from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
 
 const fieldWrapperClass =
@@ -22,19 +25,96 @@ const passwordPattern = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/
 const passwordGuideText =
   "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
 
-export default function SuperAdminSignupPage() {
+/** 초대 JWT 등에 이메일 클레임이 있을 때만 추출 (서명 검증 없음 — 표시용) */
+function tryDecodeEmailFromInvitationJwt(token: string): string | null {
+  const parts = token.split(".")
+  if (parts.length !== 3) return null
+  try {
+    const payloadSegment = parts[1]
+    const base64 = payloadSegment.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    )
+    const json = JSON.parse(atob(padded)) as Record<string, unknown>
+    const candidates = [
+      json.email,
+      json.inviteeEmail,
+      json.invitedEmail,
+      json.sub,
+    ]
+    for (const c of candidates) {
+      if (typeof c === "string" && emailPattern.test(c.trim())) {
+        return c.trim()
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function InvitationSignupContent() {
   const router = useRouter()
-  const [managerName, setManagerName] = useState("")
+  const searchParams = useSearchParams()
+
+  const invitationToken = (
+    searchParams.get("invitationToken") ??
+    searchParams.get("token") ??
+    searchParams.get("invite")
+  )?.trim() ?? ""
+
+  const emailFromQuery = searchParams.get("email")?.trim() ?? ""
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
-  const [companyName, setCompanyName] = useState("")
-  const [businessNumber, setBusinessNumber] = useState("")
   const [emailTouched, setEmailTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [emailLockedFromInvite, setEmailLockedFromInvite] = useState(false)
+  const [inviteEmailLoading, setInviteEmailLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function resolveInviteEmail() {
+      if (emailFromQuery && emailPattern.test(emailFromQuery)) {
+        if (!cancelled) {
+          setEmail(emailFromQuery)
+          setEmailLockedFromInvite(Boolean(invitationToken))
+        }
+        return
+      }
+
+      if (!invitationToken) return
+
+      setInviteEmailLoading(true)
+      try {
+        const preview = await fetchInvitationSignupPreview(invitationToken)
+        if (!cancelled && preview.ok) {
+          setEmail(preview.email)
+          setEmailLockedFromInvite(true)
+          return
+        }
+      } finally {
+        if (!cancelled) setInviteEmailLoading(false)
+      }
+
+      const fromJwt = tryDecodeEmailFromInvitationJwt(invitationToken)
+      if (!cancelled && fromJwt) {
+        setEmail(fromJwt)
+        setEmailLockedFromInvite(true)
+      }
+    }
+
+    void resolveInviteEmail()
+    return () => {
+      cancelled = true
+    }
+  }, [emailFromQuery, invitationToken])
 
   const normalizedEmail = email.trim()
   const isEmailValid = emailPattern.test(normalizedEmail)
@@ -56,34 +136,41 @@ export default function SuperAdminSignupPage() {
     password !== passwordConfirm
 
   const canSubmit =
-    managerName.trim().length > 0 &&
+    invitationToken.length > 0 &&
     normalizedEmail.length > 0 &&
     isEmailValid &&
     isPasswordValid &&
     passwordConfirm.trim().length > 0 &&
-    companyName.trim().length > 0 &&
-    businessNumber.trim().length > 0 &&
-    password === passwordConfirm
+    password === passwordConfirm &&
+    !isSubmitting &&
+    !inviteEmailLoading
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitted(true)
     setSubmitError(null)
 
+    if (!invitationToken) {
+      setSubmitError("초대 메일의 링크를 통해 접속해 주세요.")
+      return
+    }
+
     if (!canSubmit) return
 
     setIsSubmitting(true)
     try {
-      const result = await signupAdmin({
+      const result = await signupWithInvitation({
         email: normalizedEmail,
         password,
-        displayName: managerName.trim(),
-        organizationName: companyName.trim(),
-        businessNumber: businessNumber.trim(),
+        invitationToken,
       })
 
       if (result.ok) {
-        router.push("/login")
+        if (result.sessionStarted) {
+          router.push("/productlist")
+        } else {
+          router.push("/login")
+        }
         return
       }
 
@@ -102,13 +189,10 @@ export default function SuperAdminSignupPage() {
         logoHref="/"
       />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
-        <h1 className="text_2xl_semibold black_black_500_t">
-          기업담당자 회원가입
-        </h1>
+        <h1 className="text_2xl_semibold black_black_500_t">초대 회원가입</h1>
         <p className="text_sm_medium gray_gray_500_t">
-          그룹 내 일반 회원·관리자는 기업담당자가 보낸 초대 메일의 링크(
-          <span className="whitespace-nowrap">/invitations/signup</span>)로
-          가입할 수 있습니다.
+          기업담당자 초대로 일반 회원 또는 관리자 권한으로 가입합니다. 이메일은
+          초대 정보에 맞게 표시됩니다.
         </p>
 
         <form
@@ -116,27 +200,6 @@ export default function SuperAdminSignupPage() {
           noValidate
           onSubmit={handleSubmit}
         >
-          <div className={fieldWrapperClass}>
-            <label
-              htmlFor="managerName"
-              className="text_lg_medium black_black_400_t"
-            >
-              이름(기업 담당자)
-            </label>
-            <Input
-              id="managerName"
-              name="managerName"
-              type="text"
-              placeholder="이름을 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={inputClass}
-              value={managerName}
-              onChange={(event) => setManagerName(event.target.value)}
-              required
-            />
-          </div>
-
           <div className={fieldWrapperClass}>
             <label htmlFor="email" className="text_lg_medium black_black_400_t">
               이메일
@@ -152,11 +215,17 @@ export default function SuperAdminSignupPage() {
               autoComplete="email"
               inputMode="email"
               value={email}
+              readOnly={emailLockedFromInvite}
               onBlur={() => setEmailTouched(true)}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={showEmailInvalid}
               required
             />
+            {inviteEmailLoading ? (
+              <p className="text_sm_medium gray_gray_500_t">
+                초대 정보를 불러오는 중…
+              </p>
+            ) : null}
             {showEmailInvalid && (
               <p className="text_sm_medium text-[#F97B22]">
                 올바른 이메일 형식으로 입력해 주세요.
@@ -225,48 +294,6 @@ export default function SuperAdminSignupPage() {
             )}
           </div>
 
-          <div className={fieldWrapperClass}>
-            <label
-              htmlFor="companyName"
-              className="text_lg_medium black_black_400_t"
-            >
-              회사명
-            </label>
-            <Input
-              id="companyName"
-              name="companyName"
-              type="text"
-              placeholder="회사명을 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={inputClass}
-              value={companyName}
-              onChange={(event) => setCompanyName(event.target.value)}
-              required
-            />
-          </div>
-
-          <div className={fieldWrapperClass}>
-            <label
-              htmlFor="businessNumber"
-              className="text_lg_medium black_black_400_t"
-            >
-              사업자번호
-            </label>
-            <Input
-              id="businessNumber"
-              name="businessNumber"
-              type="text"
-              placeholder="사업자번호를 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={inputClass}
-              value={businessNumber}
-              onChange={(event) => setBusinessNumber(event.target.value)}
-              required
-            />
-          </div>
-
           {submitError ? (
             <p className="text_sm_medium w-full max-w-[327px] text-[#F97B22] md:max-w-[640px]">
               {submitError}
@@ -277,12 +304,22 @@ export default function SuperAdminSignupPage() {
             type="submit"
             variant="solid"
             size="lg"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!canSubmit}
             className="h-[54px] w-full max-w-[327px] disabled:cursor-not-allowed disabled:opacity-60 md:h-[64px] md:max-w-[640px]"
           >
             {isSubmitting ? "처리 중…" : "시작하기"}
           </Button>
         </form>
+
+        <p className="w-full max-w-[327px] text-center text_xs_regular gray_gray_500_t md:max-w-[640px]">
+          기업담당자로 첫 가입이신가요?{" "}
+          <Link
+            href="/signup/super-admin"
+            className="text_xs_semibold text-[#F97B22] underline underline-offset-2"
+          >
+            기업담당자 회원가입
+          </Link>
+        </p>
 
         <p className="w-full max-w-[327px] text-center text_xs_regular gray_gray_500_t md:max-w-[640px]">
           이미 계정이 있으신가요?{" "}
@@ -295,5 +332,26 @@ export default function SuperAdminSignupPage() {
         </p>
       </section>
     </main>
+  )
+}
+
+export default function InvitationSignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
+          <FullWidthCenterHeader
+            className="absolute left-0 top-0 z-10"
+            logoHref="/"
+          />
+          <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
+            <h1 className="text_2xl_semibold black_black_500_t">초대 회원가입</h1>
+            <p className="text_sm_medium gray_gray_500_t">불러오는 중…</p>
+          </section>
+        </main>
+      }
+    >
+      <InvitationSignupContent />
+    </Suspense>
   )
 }
