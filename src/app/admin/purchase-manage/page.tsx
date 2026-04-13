@@ -31,6 +31,9 @@ function sortItems(
   return copy;
 }
 
+
+
+
 function paginate<T>(list: T[], page: number, perPage: number): T[] {
   const start = (page - 1) * perPage;
   return list.slice(start, start + perPage);
@@ -78,8 +81,7 @@ export default function PurchaseManagePage() {
       <Header
         device={device}
         isLoggedIn={isLoggedIn}
-        role={role}
-        cartCount={2}
+        role={role}        cartCount={2}
       />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
