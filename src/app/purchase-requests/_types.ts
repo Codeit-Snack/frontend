@@ -5,7 +5,7 @@ export type PurchaseRequestSort = "latest" | "amountAsc" | "amountDesc";
 export type PurchaseRequestStatus = "pending" | "rejected" | "approved";
 
 export interface PurchaseRequestItem {
-  id: string;
+  id: number;
   requestDate: string; // 2024.07.04
   productSummary: string; // "코카콜라 제로 외 1건"
   totalQuantity: number;
