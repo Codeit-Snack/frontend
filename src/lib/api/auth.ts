@@ -385,14 +385,18 @@ export async function signupWithInvitation(
     return { ok: false, message: msg };
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/invitations/signup`, {
+  /** 객체 리터럴 대신 고정 키만 직렬화 (email·invitationToken 등 불필요 키가 섞이지 않도록) */
+  const requestBody = `{"token":${JSON.stringify(token)},"password":${JSON.stringify(password)},"displayName":${JSON.stringify(displayName)}}`;
+
+  const signupUrl =
+    typeof window !== "undefined"
+      ? "/api/invitations/signup"
+      : `${API_BASE_URL}/api/invitations/signup`;
+
+  const res = await fetch(signupUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      token,
-      password,
-      displayName,
-    }),
+    body: requestBody,
   });
 
   let body: unknown = null;
