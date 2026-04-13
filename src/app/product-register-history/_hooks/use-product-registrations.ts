@@ -17,6 +17,8 @@ export function useProductRegistrations() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
@@ -26,16 +28,27 @@ export function useProductRegistrations() {
           sort,
           pageSize: 6,
         });
+
+        if (cancelled) return;
         setItems(result.items);
         setTotalPages(result.totalPages);
-      } catch {
-        setError("상품 정보를 불러오지 못했습니다.");
+      } catch (error) {
+        if (cancelled) return;
+        setError(
+          error instanceof Error
+            ? error.message
+            : "상품 정보를 불러오지 못했습니다."
+        );
       } finally {
+        if (cancelled) return;
         setLoading(false);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [page, sort]);
 
   const handleSortChange = useCallback((nextSort: ProductSort) => {
