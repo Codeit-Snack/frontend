@@ -1,14 +1,18 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
+import Link from "next/link"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { hasStoredAccessToken } from "@/lib/auth/session-storage"
+import { addCartItem, ApiError } from "../_lib/api"
 
 /** 목업: 결제 예정 금액의 1%를 적립 포인트로 표시 */
 const POINT_RATE = 0.01
 
 interface ProductDetailPurchaseSectionProps {
+  productId: number
   productName: string
   unitPrice: number
 }
@@ -22,9 +26,15 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
   )
 }
 
-export function ProductDetailPurchaseSection({ productName, unitPrice }: ProductDetailPurchaseSectionProps) {
+export function ProductDetailPurchaseSection({
+  productId,
+  productName,
+  unitPrice,
+}: ProductDetailPurchaseSectionProps) {
   const [quantity, setQuantity] = useState(1)
   const [cartMessage, setCartMessage] = useState<string | null>(null)
+  const [cartError, setCartError] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const lineTotal = unitPrice * quantity
   const expectedPoints = Math.floor(lineTotal * POINT_RATE)
@@ -32,12 +42,35 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
   const bump = (delta: number) => {
     setQuantity((q) => Math.min(99, Math.max(1, q + delta)))
     setCartMessage(null)
+    setCartError(null)
   }
 
-  const handleAddToCart = () => {
-    setCartMessage(
-      `장바구니에 담았습니다 (목업): ${productName} × ${quantity}개 — 합계 ${lineTotal.toLocaleString()}원`,
-    )
+  const handleAddToCart = async () => {
+    setCartMessage(null)
+    setCartError(null)
+    if (!hasStoredAccessToken()) {
+      setCartError("장바구니를 이용하려면 로그인해주세요.")
+      return
+    }
+    setAdding(true)
+    try {
+      await addCartItem(productId, quantity)
+      setCartMessage(
+        `장바구니에 담았습니다: ${productName} × ${quantity}개 — 합계 ${lineTotal.toLocaleString()}원`,
+      )
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setCartError("로그인이 만료되었습니다. 다시 로그인해주세요.")
+      } else if (e instanceof ApiError && e.status === 403) {
+        setCartError("장바구니에 담을 권한이 없습니다.")
+      } else {
+        setCartError(
+          e instanceof Error ? e.message : "장바구니에 담지 못했습니다.",
+        )
+      }
+    } finally {
+      setAdding(false)
+    }
   }
 
   return (
@@ -66,7 +99,6 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
           <span className="text-sm font-bold text-[#E5762C] lg:text-base">
             {quantity}개
           </span>
-          
 
           <div className="flex flex-col items-center justify-center">
             <button
@@ -89,14 +121,15 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
             </button>
           </div>
         </div>
-        
+
         <Button
           type="button"
           variant="solid"
           className="h-14 w-full shrink-0 rounded-2xl px-6 text-base font-semibold !w-full sm:h-12 sm:!w-auto sm:min-w-[200px] sm:flex-1 lg:text-base"
-          onClick={handleAddToCart}
+          onClick={() => void handleAddToCart()}
+          disabled={adding}
         >
-          장바구니 담기
+          {adding ? "담는 중…" : "장바구니 담기"}
         </Button>
       </div>
       <div className="flex justify-between border-t border-gray-100 pt-3 lg:pt-4">
@@ -107,6 +140,18 @@ export function ProductDetailPurchaseSection({ productName, unitPrice }: Product
         <p className="text-xs text-gray-600 lg:text-sm" role="status">
           {cartMessage}
         </p>
+      ) : null}
+      {cartError ? (
+        <div className="space-y-2">
+          <p className="text-xs text-red-600 lg:text-sm" role="alert">
+            {cartError}
+          </p>
+          {cartError.includes("로그인") ? (
+            <Button variant="outlined" asChild className="rounded-xl text-sm">
+              <Link href="/login">로그인</Link>
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )
