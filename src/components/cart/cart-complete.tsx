@@ -5,6 +5,7 @@ import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import type { RequestItem } from "@/components/ui/dialog";
 import Image from "next/image";
+import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 
 interface CartCompleteProps {
@@ -24,6 +25,7 @@ export default function CartComplete({
 }: CartCompleteProps) {
   const router = useRouter();
   const device = useDevice();
+  const { isLoggedIn, role } = useAuthHeader();
   const productSummary =
     items.length === 1
       ? items[0].name
@@ -31,7 +33,7 @@ export default function CartComplete({
 
   return (
     <div className="min-h-screen bg-[#FBF8F4]">
-      <Header device={device} isLoggedIn={true} role="member" />
+      <Header device={device} isLoggedIn={isLoggedIn} role={role} />
 
       {/* 상단 완료 텍스트 */}
       <div className="flex flex-col items-center justify-center gap-2 py-10 px-6 md:px-[120px]">

@@ -206,6 +206,10 @@
   --text-xl-size: clamp(1rem, 1.1rem + 0.25vw, 1.25rem);
   --text-xl-line: 1.6;
 
+  /* PC 헤더 GNB: 뷰포트가 좁아질 때 일반 text-xl보다 빠르게 축소 (약 14px~20px) */
+  --text-header-nav-size: clamp(0.875rem, 0.68rem + 0.65vw, 1.25rem);
+  --text-header-nav-line: 1.45;
+
   /* Text-2lg: 15px~18px / line 1.44 */
   --text-2lg-size: clamp(0.9375rem, 1rem + 0.2vw, 1.125rem);
   --text-2lg-line: 1.44;
@@ -562,6 +566,14 @@
   font-size: var(--text-xl-size);
   line-height: var(--text-xl-line);
   font-weight: 400 !important;
+}
+
+.text_header_nav_bold {
+  font-family: var(--font-family-pretendard);
+  font-size: var(--text-header-nav-size);
+  line-height: var(--text-header-nav-line);
+  font-weight: 700 !important;
+  white-space: nowrap !important;
 }
 
 /* Text-2lg */

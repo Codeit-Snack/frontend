@@ -1,25 +1,69 @@
 "use client"
 
+import type { Category, SubCategory } from "@/types/category"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CATEGORIES, getSubCategoriesByCategoryId, SUB_CATEGORIES } from "@/data/categories"
-import { getProducts } from "../_lib/api"
-import type { Product, SortOption } from "../_lib/types"
+import { getCategories, getProducts } from "../_lib/api"
+import type { CatalogCategory, Product, SortOption } from "../_lib/types"
 
 const DEFAULT_PAGE_SIZE = 12
+
+function catalogToRoots(rows: CatalogCategory[]): Category[] {
+  return rows
+    .filter((r) => r.parentId === null)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id)
+    .map((r) => ({ id: r.id, name: r.name }))
+}
+
+function catalogToSubsForParent(
+  rows: CatalogCategory[],
+  parentId: number,
+): SubCategory[] {
+  return rows
+    .filter((r) => r.parentId === parentId)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      categoryId: parentId,
+    }))
+}
 
 export function useProducts() {
   const [keyword, setKeyword] = useState("")
   const [debouncedKeyword, setDebouncedKeyword] = useState("")
 
+  const [catalogRows, setCatalogRows] = useState<CatalogCategory[]>([])
+  const [categoriesError, setCategoriesError] = useState<string | null>(null)
+
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<number | null>(null)
   const [sort, setSort] = useState<SortOption>("latest")
   const [page, setPage] = useState(1)
+  const [listVersion, setListVersion] = useState(0)
 
   const [products, setProducts] = useState<Product[]>([])
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await getCategories()
+        if (cancelled) return
+        setCatalogRows(rows)
+        setCategoriesError(null)
+      } catch {
+        if (cancelled) return
+        setCategoriesError("카테고리를 불러오지 못했습니다.")
+        setCatalogRows([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -29,14 +73,23 @@ export function useProducts() {
     return () => clearTimeout(timer)
   }, [keyword])
 
+  const categories = useMemo(
+    () => catalogToRoots(catalogRows),
+    [catalogRows],
+  )
+
+  const subCategories = useMemo(() => {
+    if (selectedCategoryId == null) return []
+    return catalogToSubsForParent(catalogRows, selectedCategoryId)
+  }, [catalogRows, selectedCategoryId])
+
   useEffect(() => {
     let cancelled = false
 
-    const categoryForApi = selectedSubCategoryId
-      ? SUB_CATEGORIES.find((s) => s.id === selectedSubCategoryId)?.name
-      : undefined
-    const categoryIdForApi =
-      selectedCategoryId && !selectedSubCategoryId ? selectedCategoryId : undefined
+    const apiCategoryId =
+      selectedSubCategoryId != null
+        ? selectedSubCategoryId
+        : undefined
 
     ;(async () => {
       try {
@@ -44,8 +97,7 @@ export function useProducts() {
         setError(null)
         const result = await getProducts({
           keyword: debouncedKeyword,
-          category: categoryForApi,
-          categoryId: categoryIdForApi,
+          categoryId: apiCategoryId,
           sort,
           page,
           pageSize: DEFAULT_PAGE_SIZE,
@@ -66,7 +118,14 @@ export function useProducts() {
     return () => {
       cancelled = true
     }
-  }, [debouncedKeyword, selectedCategoryId, selectedSubCategoryId, sort, page])
+  }, [
+    debouncedKeyword,
+    selectedSubCategoryId,
+    sort,
+    page,
+    listVersion,
+    selectedCategoryId,
+  ])
 
   const sortLabel = useMemo(() => {
     switch (sort) {
@@ -115,18 +174,16 @@ export function useProducts() {
     [],
   )
 
-  const subCategories = useMemo(
-    () =>
-      selectedCategoryId
-        ? getSubCategoriesByCategoryId(selectedCategoryId)
-        : [],
-    [selectedCategoryId],
-  )
+  const refreshProductList = useCallback(() => {
+    setListVersion((v) => v + 1)
+  }, [])
 
   return {
     keyword,
-    categories: CATEGORIES,
+    categories,
     subCategories,
+    catalogRows,
+    categoriesError,
     selectedCategoryId,
     selectedSubCategoryId,
     sort,
@@ -142,5 +199,6 @@ export function useProducts() {
     setCategory: handleSelectCategory,
     setSubCategory: handleSelectSubCategory,
     setSort: handleSelectSort,
+    refreshProductList,
   }
 }

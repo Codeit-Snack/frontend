@@ -29,7 +29,7 @@ return (
         <button
           onClick={() => onSelectCategory(null)}
           className={cn(
-            "relative pb-2 text-lg font-medium transition-colors",
+            "relative pb-2 text-base font-medium transition-colors lg:text-lg",
             isAllSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
           )}
         >
@@ -46,7 +46,7 @@ return (
               key={c.id}
               onClick={() => onSelectCategory(c.id)}
               className={cn(
-                "relative pb-2 text-lg font-medium transition-colors",
+                "relative pb-2 text-base font-medium transition-colors lg:text-lg",
                 isSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -65,7 +65,7 @@ return (
           <button
             onClick={() => onSelectSubCategory(null)}
             className={cn(
-              "rounded-full px-4 py-1 text-sm transition-all",
+              "rounded-full px-4 py-1 text-xs transition-all lg:text-sm",
               selectedSubCategoryId === null
                 ? "bg-orange-50 text-orange-600 font-semibold"
                 : "text-gray-500 hover:bg-gray-50"
@@ -81,7 +81,7 @@ return (
                 key={s.id}
                 onClick={() => onSelectSubCategory(s.id)}
                 className={cn(
-                  "rounded-full px-4 py-1 text-sm transition-all",
+                  "rounded-full px-4 py-1 text-xs transition-all lg:text-sm",
                   isSelected
                     ? "bg-orange-50 text-orange-600 font-semibold"
                     : "text-gray-500 hover:bg-gray-50"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import type { Member } from "../_lib/types";
 import { MoreVertical, UserRound } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
@@ -9,8 +10,8 @@ import { Button } from "@/components/ui/button";
 interface MembersTableProps {
   members: Member[];
   loading?: boolean;
-  onChangeRole: (memberId: number) => void;
-  onDeactivate: (memberId: number) => void;
+  onChangeRole: (member: Member) => void;
+  onDeactivate: (member: Member) => void;
 }
 
 function roleLabel(role: Member["role"]) {
@@ -32,13 +33,11 @@ function chipClassName(role: Member["role"], compact = false) {
     ? "bg-[var(--background-background-500)] text-[var(--primary-orange-400)] hover:bg-[var(--background-background-500)]"
     : "bg-[var(--background-background-300)] text-[var(--gray-gray-400)] hover:bg-[var(--background-background-300)]";
 
-  const widthClass = roleSelected(role) ? "w-[68px]" : "w-[51px]";
-
   if (compact) {
     return `${baseClass} h-6 px-2.5 py-0 text-xs font-medium`;
   }
 
-  return `${baseClass} ${widthClass} h-[36px] px-0 py-0 text-[20px] font-medium leading-8 justify-center`;
+  return `${baseClass} h-[36px] px-[6px] py-0 text-sm font-medium leading-none justify-center`;
 }
 
 export function MembersTable({
@@ -47,7 +46,7 @@ export function MembersTable({
   onChangeRole,
   onDeactivate,
 }: MembersTableProps) {
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<Member["id"] | null>(null);
   const menuRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
@@ -64,6 +63,23 @@ export function MembersTable({
     };
   }, []);
 
+  if (!loading && members.length === 0) {
+    return (
+      <section className="mt-6 flex justify-center">
+        <div className="flex flex-col items-center">
+          <Image
+            src="/assets/snack_member_1.svg"
+            alt="회원 없음 안내"
+            width={388}
+            height={448}
+            className="h-[318px] w-[375px] min-[745px]:h-[448px] min-[745px]:w-[388px]"
+            priority
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-6">
       <div className="hidden min-[745px]:block">
@@ -79,10 +95,6 @@ export function MembersTable({
         {loading ? (
           <p className="px-20 py-8 text-sm text-gray-400">
             회원 정보를 불러오는 중입니다.
-          </p>
-        ) : members.length === 0 ? (
-          <p className="px-20 py-8 text-sm text-gray-400">
-            조회된 회원이 없습니다.
           </p>
         ) : (
           <div className="mt-2 divide-y divide-[#F0ECE6]">
@@ -112,7 +124,7 @@ export function MembersTable({
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    onClick={() => onDeactivate(member.id)}
+                    onClick={() => onDeactivate(member)}
                     variant="etc"
                     size="etc-sm"
                     className="rounded-lg font-normal"
@@ -121,7 +133,7 @@ export function MembersTable({
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => onChangeRole(member.id)}
+                    onClick={() => onChangeRole(member)}
                     variant="solid"
                     size="etc-sm"
                     className="rounded-lg font-normal"
@@ -139,10 +151,6 @@ export function MembersTable({
         {loading ? (
           <p className="px-5 py-8 text-sm text-gray-400">
             회원 정보를 불러오는 중입니다.
-          </p>
-        ) : members.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400">
-            조회된 회원이 없습니다.
           </p>
         ) : (
           <ul className="divide-y divide-[#F0ECE6]">
@@ -198,7 +206,7 @@ export function MembersTable({
                           <button
                             type="button"
                             onClick={() => {
-                              onDeactivate(member.id);
+                              onDeactivate(member);
                               setOpenMenuId(null);
                             }}
                             className="flex h-[44px] w-[88px] items-center justify-center rounded-t-[16px] text-[14px] font-medium text-[#6E6963]"
@@ -208,7 +216,7 @@ export function MembersTable({
                           <button
                             type="button"
                             onClick={() => {
-                              onChangeRole(member.id);
+                              onChangeRole(member);
                               setOpenMenuId(null);
                             }}
                             className="flex h-[44px] w-[88px] items-center justify-center rounded-b-[16px] border-t border-[#F2EEE8] text-[14px] font-medium text-[#6E6963]"

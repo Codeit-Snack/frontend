@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
 import type { PurchaseRequestItem, PurchaseRequestSort } from "./_types";
@@ -37,6 +38,7 @@ function paginate<T>(list: T[], page: number, perPage: number): T[] {
 
 export default function PurchaseRequestsPage() {
   const device = useDevice();
+  const { isLoggedIn, role } = useAuthHeader();
   const [sort, setSort] = useState<PurchaseRequestSort>("latest");
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
@@ -78,8 +80,8 @@ export default function PurchaseRequestsPage() {
     <div className="min-h-screen background_background_400_b">
       <Header
         device={device}
-        isLoggedIn
-        role="member"
+        isLoggedIn={isLoggedIn}
+        role={role}
         cartCount={2}
       />
 

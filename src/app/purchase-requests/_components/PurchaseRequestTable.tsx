@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { PurchaseRequestItem } from "../_types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,8 @@ export function PurchaseRequestTable({
   onCancelRequest,
   className,
 }: PurchaseRequestTableProps) {
+  const router = useRouter();
+
   return (
     <div
       className={cn(
@@ -84,7 +87,8 @@ export function PurchaseRequestTable({
             return (
               <tr
                 key={item.id}
-                className="[&>td]:border-b [&>td]:line_line_200_l last:[&>td]:border-b-0"
+                className="[&>td]:border-b [&>td]:line_line_200_l last:[&>td]:border-b-0 cursor-pointer"
+                onClick={() => router.push("/purchase-request-detail")}
               >
                 <td className="w-28 min-w-0 pl-[80px] pr-[40px] py-6 text-center font-[Pretendard] text-[20px] font-normal leading-[32px] text-[var(--black-black-100,#6B6B6B)]">
                   {item.requestDate}
@@ -119,7 +123,10 @@ export function PurchaseRequestTable({
                       variant="outlined"
                       size="etc-sm"
                       className="!h-8 !min-w-0 !w-auto !rounded-lg !px-4 !py-2 font-[Pretendard] !text-[18px] !font-semibold !leading-[26px] !text-[var(--primary-orange-400,#F97B22)]"
-                      onClick={() => onCancelRequest(item)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onCancelRequest(item);
+                      }}
                     >
                       요청 취소
                     </Button>
