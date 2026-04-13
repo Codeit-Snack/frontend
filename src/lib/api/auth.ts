@@ -254,11 +254,12 @@ export async function signupAdmin(
   return { ok: false, message };
 }
 
-/** 초대 수락 회원가입 (`POST /api/invitations/signup`) */
+/** 초대 수락 회원가입 (`POST /api/invitations/signup`) — 본문은 `token`·`password`·`displayName`만 허용 */
 export type InvitationSignupPayload = {
-  email: string;
+  token: string;
   password: string;
-  invitationToken: string;
+  /** 1~100자, 문자열 */
+  displayName: string;
 };
 
 function pickEmailFromRecord(o: Record<string, unknown>): string | null {
@@ -272,27 +273,61 @@ function pickEmailFromRecord(o: Record<string, unknown>): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function pickDisplayNameFromRecord(o: Record<string, unknown>): string | null {
+  const raw =
+    (typeof o.displayName === "string" && o.displayName) ||
+    (typeof o.name === "string" && o.name) ||
+    (typeof o.inviteeName === "string" && o.inviteeName) ||
+    (typeof o.invitee_name === "string" && o.invitee_name) ||
+    null;
+  const trimmed = raw?.trim() ?? "";
+  if (trimmed.length < 1 || trimmed.length > 100) return null;
+  return trimmed;
+}
+
 /**
- * 초대 토큰으로 가입 대상 이메일 조회.
- * 백엔드에 `GET /api/invitations/signup?invitationToken=…`가 없으면 404/405 등으로 실패하며, 클라이언트는 JWT 등 다른 방식으로 보완합니다.
+ * 초대 토큰으로 가입 대상 정보 조회(표시용).
+ * `GET /api/invitations/signup?token=…` — 백엔드가 없으면 404 등으로 실패할 수 있음.
  */
 export async function fetchInvitationSignupPreview(
   invitationToken: string
-): Promise<{ ok: true; email: string } | { ok: false }> {
+): Promise<
+  { ok: true; email: string; displayName?: string } | { ok: false }
+> {
   const t = normalizeInvitationToken(invitationToken);
   if (!t) return { ok: false };
 
-  const url = new URL(`${API_BASE_URL}/api/invitations/signup`);
-  url.searchParams.set("invitationToken", t);
+  const tryUrls = [
+    (() => {
+      const u = new URL(`${API_BASE_URL}/api/invitations/signup`);
+      u.searchParams.set("token", t);
+      return u.toString();
+    })(),
+    (() => {
+      const u = new URL(`${API_BASE_URL}/api/invitations/signup`);
+      u.searchParams.set("invitationToken", t);
+      return u.toString();
+    })(),
+  ];
 
-  let res: Response;
+  let res: Response | null = null;
   try {
-    res = await fetch(url.toString(), { method: "GET" });
+    for (const url of tryUrls) {
+      const r = await fetch(url, { method: "GET" });
+      if (r.ok) {
+        res = r;
+        break;
+      }
+      if (r.status !== 404 && r.status !== 405) {
+        res = r;
+        break;
+      }
+    }
   } catch {
     return { ok: false };
   }
 
-  if (!res.ok) return { ok: false };
+  if (!res?.ok) return { ok: false };
 
   try {
     const body: unknown = await res.json();
@@ -307,7 +342,9 @@ export async function fetchInvitationSignupPreview(
       data = root;
     }
     const email = pickEmailFromRecord(data);
-    if (email) return { ok: true, email };
+    if (!email) return { ok: false };
+    const displayName = pickDisplayNameFromRecord(data) ?? undefined;
+    return { ok: true, email, ...(displayName ? { displayName } : {}) };
   } catch {
     return { ok: false };
   }
@@ -324,9 +361,17 @@ export async function signupWithInvitation(
 ): Promise<
   { ok: true; sessionStarted: boolean } | { ok: false; message: string }
 > {
-  const token = normalizeInvitationToken(payload.invitationToken);
+  const token = normalizeInvitationToken(payload.token);
   if (!token) {
     return { ok: false, message: "유효한 초대 정보가 없습니다." };
+  }
+
+  const displayName = payload.displayName.trim();
+  if (displayName.length < 1 || displayName.length > 100) {
+    return {
+      ok: false,
+      message: "이름(표시 이름)은 1자 이상 100자 이하여야 합니다.",
+    };
   }
 
   let password: string;
@@ -344,9 +389,9 @@ export async function signupWithInvitation(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: payload.email.trim(),
+      token,
       password,
-      invitationToken: token,
+      displayName,
     }),
   });
 

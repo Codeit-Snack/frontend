@@ -67,9 +67,11 @@ function InvitationSignupContent() {
   const emailFromQuery = searchParams.get("email")?.trim() ?? ""
 
   const [email, setEmail] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
   const [emailTouched, setEmailTouched] = useState(false)
+  const [displayNameTouched, setDisplayNameTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -97,6 +99,9 @@ function InvitationSignupContent() {
         if (!cancelled && preview.ok) {
           setEmail(preview.email)
           setEmailLockedFromInvite(true)
+          if (preview.displayName) {
+            setDisplayName(preview.displayName)
+          }
           return
         }
       } finally {
@@ -118,12 +123,18 @@ function InvitationSignupContent() {
 
   const normalizedEmail = email.trim()
   const isEmailValid = emailPattern.test(normalizedEmail)
+  const normalizedDisplayName = displayName.trim()
+  const isDisplayNameValid =
+    normalizedDisplayName.length >= 1 && normalizedDisplayName.length <= 100
   const isPasswordValid = passwordPattern.test(password)
 
   const showEmailInvalid =
     (emailTouched || submitted) &&
     normalizedEmail.length > 0 &&
     !isEmailValid
+  const showDisplayNameRequired =
+    (displayNameTouched || submitted) && normalizedDisplayName.length === 0
+  const showDisplayNameTooLong = normalizedDisplayName.length > 100
   const showPasswordRequired =
     (passwordTouched || submitted) && password.trim().length === 0
   const showPasswordInvalid =
@@ -137,13 +148,13 @@ function InvitationSignupContent() {
 
   const canSubmit =
     invitationToken.length > 0 &&
-    normalizedEmail.length > 0 &&
-    isEmailValid &&
+    isDisplayNameValid &&
     isPasswordValid &&
     passwordConfirm.trim().length > 0 &&
     password === passwordConfirm &&
     !isSubmitting &&
-    !inviteEmailLoading
+    !inviteEmailLoading &&
+    (normalizedEmail.length === 0 || isEmailValid)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -160,9 +171,9 @@ function InvitationSignupContent() {
     setIsSubmitting(true)
     try {
       const result = await signupWithInvitation({
-        email: normalizedEmail,
+        token: invitationToken,
         password,
-        invitationToken,
+        displayName: normalizedDisplayName,
       })
 
       if (result.ok) {
@@ -191,8 +202,8 @@ function InvitationSignupContent() {
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">초대 회원가입</h1>
         <p className="text_sm_medium gray_gray_500_t">
-          기업담당자 초대로 일반 회원 또는 관리자 권한으로 가입합니다. 이메일은
-          초대 정보에 맞게 표시됩니다.
+          기업담당자 초대로 가입합니다. 이름은 계정에 표시됩니다. 가입 이메일은
+          초대에 연결된 주소로 처리되며, 서버에는 보내지 않습니다.
         </p>
 
         <form
@@ -201,14 +212,54 @@ function InvitationSignupContent() {
           onSubmit={handleSubmit}
         >
           <div className={fieldWrapperClass}>
+            <label
+              htmlFor="displayName"
+              className="text_lg_medium black_black_400_t"
+            >
+              이름
+            </label>
+            <Input
+              id="displayName"
+              name="displayName"
+              type="text"
+              placeholder="이름을 입력해 주세요 (1~100자)"
+              variant="outlined"
+              inputSize="md"
+              className={cn(
+                inputClass,
+                (showDisplayNameRequired ||
+                  showDisplayNameTooLong) &&
+                  errorInputClass
+              )}
+              autoComplete="name"
+              maxLength={100}
+              value={displayName}
+              onBlur={() => setDisplayNameTouched(true)}
+              onChange={(event) => setDisplayName(event.target.value)}
+              aria-invalid={showDisplayNameRequired || showDisplayNameTooLong}
+              required
+            />
+            {showDisplayNameRequired && (
+              <p className="text_sm_medium text-[#F97B22]">
+                이름을 입력해 주세요.
+              </p>
+            )}
+            {showDisplayNameTooLong && (
+              <p className="text_sm_medium text-[#F97B22]">
+                이름은 100자 이하여야 합니다.
+              </p>
+            )}
+          </div>
+
+          <div className={fieldWrapperClass}>
             <label htmlFor="email" className="text_lg_medium black_black_400_t">
-              이메일
+              이메일 (안내)
             </label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="이메일을 입력해 주세요"
+              placeholder="초대에 연결된 이메일이 여기 표시됩니다"
               variant="outlined"
               inputSize="md"
               className={cn(inputClass, showEmailInvalid && errorInputClass)}
@@ -219,11 +270,16 @@ function InvitationSignupContent() {
               onBlur={() => setEmailTouched(true)}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={showEmailInvalid}
-              required
             />
             {inviteEmailLoading ? (
               <p className="text_sm_medium gray_gray_500_t">
                 초대 정보를 불러오는 중…
+              </p>
+            ) : null}
+            {!inviteEmailLoading && normalizedEmail.length === 0 ? (
+              <p className="text_xs_regular gray_gray_500_t">
+                표시가 비어 있어도 가입은 가능합니다. 로그인 시 초대된 이메일을
+                사용하세요.
               </p>
             ) : null}
             {showEmailInvalid && (
