@@ -1,186 +1,33 @@
 "use client"
 
-import Link from "next/link"
+import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FormEvent, Suspense, useEffect, useState } from "react"
 
 import { FullWidthCenterHeader } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { PasswordInput } from "@/components/ui/password-input"
-import {
-  fetchInvitationSignupPreview,
-  signupWithInvitation,
-} from "@/lib/api/auth"
-import { cn } from "@/lib/utils"
 
-const fieldWrapperClass =
-  "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
-const inputClass =
-  "h-[54px] w-full rounded-[16px] text-sm md:h-[64px] md:text-[20px]"
-const errorInputClass =
-  "border-[#F97B22] focus-visible:border-[#F97B22] focus-visible:ring-0"
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const passwordPattern = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/
-const passwordGuideText =
-  "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
-
-/** 초대 JWT 등에 이메일 클레임이 있을 때만 추출 (서명 검증 없음 — 표시용) */
-function tryDecodeEmailFromInvitationJwt(token: string): string | null {
-  const parts = token.split(".")
-  if (parts.length !== 3) return null
-  try {
-    const payloadSegment = parts[1]
-    const base64 = payloadSegment.replace(/-/g, "+").replace(/_/g, "/")
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "="
-    )
-    const json = JSON.parse(atob(padded)) as Record<string, unknown>
-    const candidates = [
-      json.email,
-      json.inviteeEmail,
-      json.invitedEmail,
-      json.sub,
-    ]
-    for (const c of candidates) {
-      if (typeof c === "string" && emailPattern.test(c.trim())) {
-        return c.trim()
-      }
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-function SignupPageContent() {
+/**
+ * `/signup` — 레거시·북마크 호환.
+ * - 초대 쿼리(`token`, `invitationToken`, `invite`, `email`)가 있으면 `/invitations/signup`으로 이어줍니다.
+ * - 그 외에는 기업담당자 최초 가입(`/signup/super-admin`)으로 보냅니다.
+ */
+function SignupEntryRedirect() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const invitationToken = (
-    searchParams.get("invitationToken") ??
-    searchParams.get("token") ??
-    searchParams.get("invite")
-  )?.trim() ?? ""
-
-  const emailFromQuery = searchParams.get("email")?.trim() ?? ""
-
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [passwordConfirm, setPasswordConfirm] = useState("")
-  const [emailTouched, setEmailTouched] = useState(false)
-  const [passwordTouched, setPasswordTouched] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [emailLockedFromInvite, setEmailLockedFromInvite] = useState(false)
-  const [inviteEmailLoading, setInviteEmailLoading] = useState(false)
-
   useEffect(() => {
-    let cancelled = false
+    const hasInviteContext =
+      searchParams.has("invitationToken") ||
+      searchParams.has("token") ||
+      searchParams.has("invite") ||
+      searchParams.has("email")
 
-    async function resolveInviteEmail() {
-      if (emailFromQuery && emailPattern.test(emailFromQuery)) {
-        if (!cancelled) {
-          setEmail(emailFromQuery)
-          setEmailLockedFromInvite(Boolean(invitationToken))
-        }
-        return
-      }
-
-      if (!invitationToken) return
-
-      setInviteEmailLoading(true)
-      try {
-        const preview = await fetchInvitationSignupPreview(invitationToken)
-        if (!cancelled && preview.ok) {
-          setEmail(preview.email)
-          setEmailLockedFromInvite(true)
-          return
-        }
-      } finally {
-        if (!cancelled) setInviteEmailLoading(false)
-      }
-
-      const fromJwt = tryDecodeEmailFromInvitationJwt(invitationToken)
-      if (!cancelled && fromJwt) {
-        setEmail(fromJwt)
-        setEmailLockedFromInvite(true)
-      }
-    }
-
-    void resolveInviteEmail()
-    return () => {
-      cancelled = true
-    }
-  }, [emailFromQuery, invitationToken])
-
-  const normalizedEmail = email.trim()
-  const isEmailValid = emailPattern.test(normalizedEmail)
-  const isPasswordValid = passwordPattern.test(password)
-
-  const showEmailInvalid =
-    (emailTouched || submitted) &&
-    normalizedEmail.length > 0 &&
-    !isEmailValid
-  const showPasswordRequired =
-    (passwordTouched || submitted) && password.trim().length === 0
-  const showPasswordInvalid =
-    (passwordTouched || submitted) &&
-    password.trim().length > 0 &&
-    !isPasswordValid
-  const showPasswordMismatch =
-    (submitted || passwordConfirm.length > 0) &&
-    passwordConfirm.trim().length > 0 &&
-    password !== passwordConfirm
-
-  const canSubmit =
-    invitationToken.length > 0 &&
-    normalizedEmail.length > 0 &&
-    isEmailValid &&
-    isPasswordValid &&
-    passwordConfirm.trim().length > 0 &&
-    password === passwordConfirm &&
-    !isSubmitting &&
-    !inviteEmailLoading
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setSubmitted(true)
-    setSubmitError(null)
-
-    if (!invitationToken) {
-      setSubmitError("초대 링크를 통해 접속해 주세요.")
+    const q = searchParams.toString()
+    if (hasInviteContext) {
+      router.replace(q ? `/invitations/signup?${q}` : "/invitations/signup")
       return
     }
-
-    if (!canSubmit) return
-
-    setIsSubmitting(true)
-    try {
-      const result = await signupWithInvitation({
-        email: normalizedEmail,
-        password,
-        invitationToken,
-      })
-
-      if (result.ok) {
-        if (result.sessionStarted) {
-          router.push("/productlist")
-        } else {
-          router.push("/login")
-        }
-        return
-      }
-
-      setSubmitError(result.message)
-    } catch {
-      setSubmitError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+    router.replace("/signup/super-admin")
+  }, [router, searchParams])
 
   return (
     <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
@@ -190,137 +37,7 @@ function SignupPageContent() {
       />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
-        {invitationToken ? (
-          <p className="text_sm_medium gray_gray_500_t">
-            초대를 통해 가입합니다. 이메일은 초대 정보에 맞게 채워집니다.
-          </p>
-        ) : null}
-
-        <form
-          className="flex w-full flex-col items-start gap-8"
-          noValidate
-          onSubmit={handleSubmit}
-        >
-          <div className={fieldWrapperClass}>
-            <label htmlFor="email" className="text_lg_medium black_black_400_t">
-              이메일
-            </label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="이메일을 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={cn(inputClass, showEmailInvalid && errorInputClass)}
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              readOnly={emailLockedFromInvite}
-              onBlur={() => setEmailTouched(true)}
-              onChange={(event) => setEmail(event.target.value)}
-              aria-invalid={showEmailInvalid}
-              required
-            />
-            {inviteEmailLoading ? (
-              <p className="text_sm_medium gray_gray_500_t">
-                초대 정보를 불러오는 중…
-              </p>
-            ) : null}
-            {showEmailInvalid && (
-              <p className="text_sm_medium text-[#F97B22]">
-                올바른 이메일 형식으로 입력해 주세요.
-              </p>
-            )}
-          </div>
-
-          <div className={fieldWrapperClass}>
-            <label htmlFor="password" className="text_lg_medium black_black_400_t">
-              비밀번호
-            </label>
-            <PasswordInput
-              id="password"
-              name="password"
-              placeholder="비밀번호를 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={cn(
-                inputClass,
-                (showPasswordRequired || showPasswordInvalid) && errorInputClass
-              )}
-              autoComplete="new-password"
-              value={password}
-              onBlur={() => setPasswordTouched(true)}
-              onChange={(event) => setPassword(event.target.value)}
-              aria-invalid={showPasswordRequired || showPasswordInvalid}
-              toggleLabel="password"
-              required
-            />
-            <p className="text_sm_medium gray_gray_500_t">{passwordGuideText}</p>
-            {showPasswordRequired && (
-              <p className="text_sm_medium text-[#F97B22]">
-                비밀번호를 입력해 주세요.
-              </p>
-            )}
-            {showPasswordInvalid && (
-              <p className="text_sm_medium text-[#F97B22]">{passwordGuideText}</p>
-            )}
-          </div>
-
-          <div className={fieldWrapperClass}>
-            <label
-              htmlFor="passwordConfirm"
-              className="text_lg_medium black_black_400_t"
-            >
-              비밀번호 확인
-            </label>
-            <PasswordInput
-              id="passwordConfirm"
-              name="passwordConfirm"
-              placeholder="비밀번호를 다시 입력해 주세요"
-              variant="outlined"
-              inputSize="md"
-              className={cn(inputClass, showPasswordMismatch && errorInputClass)}
-              autoComplete="new-password"
-              value={passwordConfirm}
-              onChange={(event) => setPasswordConfirm(event.target.value)}
-              aria-invalid={showPasswordMismatch}
-              toggleLabel="password confirmation"
-              required
-            />
-            {showPasswordMismatch && (
-              <p className="text_sm_medium text-[#F97B22]">
-                비밀번호가 일치하지 않습니다.
-              </p>
-            )}
-          </div>
-
-          {submitError ? (
-            <p className="text_sm_medium w-full max-w-[327px] text-[#F97B22] md:max-w-[640px]">
-              {submitError}
-            </p>
-          ) : null}
-
-          <Button
-            type="submit"
-            variant="solid"
-            size="lg"
-            disabled={!canSubmit}
-            className="h-[54px] w-full max-w-[327px] disabled:cursor-not-allowed disabled:opacity-60 md:h-[64px] md:max-w-[640px]"
-          >
-            {isSubmitting ? "처리 중…" : "시작하기"}
-          </Button>
-        </form>
-
-        <p className="w-full max-w-[327px] text-center text_xs_regular gray_gray_500_t md:max-w-[640px]">
-          이미 계정이 있으신가요?{" "}
-          <Link
-            href="/login"
-            className="text_xs_semibold text-[#F97B22] underline underline-offset-2"
-          >
-            로그인
-          </Link>
-        </p>
+        <p className="text_sm_medium gray_gray_500_t">이동 중…</p>
       </section>
     </main>
   )
@@ -342,7 +59,7 @@ export default function SignupPage() {
         </main>
       }
     >
-      <SignupPageContent />
+      <SignupEntryRedirect />
     </Suspense>
   )
 }
