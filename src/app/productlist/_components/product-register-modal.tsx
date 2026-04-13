@@ -19,6 +19,20 @@ import { cn } from "@/lib/utils"
 import { ApiError, createProduct, updateProduct } from "../_lib/api"
 import type { CatalogCategory, Product } from "../_lib/types"
 
+/** 숫자만 반영해 천 단위 콤마로 표시 */
+function formatPriceInputValue(raw: string): string {
+  const digits = raw.replace(/\D/g, "")
+  if (!digits) return ""
+  const n = Number(digits)
+  if (!Number.isFinite(n)) return ""
+  return n.toLocaleString("ko-KR")
+}
+
+function parsePriceFromInput(formatted: string): number {
+  const digits = formatted.replace(/\D/g, "")
+  return digits === "" ? NaN : Number(digits)
+}
+
 interface ProductRegisterModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -150,7 +164,9 @@ export function ProductRegisterModal({
       setSubmitError(null)
       if (mode === "edit" && initialProduct) {
         setName(initialProduct.name)
-        setPriceStr(String(initialProduct.price))
+        setPriceStr(
+          formatPriceInputValue(String(Math.round(initialProduct.price))),
+        )
         setImageKey(initialProduct.imageKey?.trim() ?? "")
         setProductUrl(initialProduct.productUrl?.trim() ?? "")
         const { main, sub } = resolveMainSubFromCategoryId(
@@ -178,7 +194,7 @@ export function ProductRegisterModal({
       setSubmitError("상품명을 입력해주세요.")
       return
     }
-    const price = Number(priceStr)
+    const price = parsePriceFromInput(priceStr)
     if (!Number.isFinite(price) || price < 0) {
       setSubmitError("올바른 가격을 입력해주세요.")
       return
@@ -256,11 +272,13 @@ export function ProductRegisterModal({
             <DialogLabel>가격</DialogLabel>
             <DialogInput
               placeholder="가격을 입력해주세요."
-              type="number"
-              min={0}
-              step={1}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
               value={priceStr}
-              onChange={(e) => setPriceStr(e.target.value)}
+              onChange={(e) =>
+                setPriceStr(formatPriceInputValue(e.target.value))
+              }
             />
           </DialogField>
 
