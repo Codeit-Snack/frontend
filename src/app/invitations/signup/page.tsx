@@ -2,7 +2,14 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FormEvent, Suspense, useEffect, useState } from "react"
+import {
+  FormEvent,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react"
 
 import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
@@ -24,6 +31,15 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const passwordPattern = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/
 const passwordGuideText =
   "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
+
+function decodeEmailQueryParam(raw: string): string {
+  if (!raw.trim()) return ""
+  try {
+    return decodeURIComponent(raw).trim()
+  } catch {
+    return raw.trim()
+  }
+}
 
 /** 초대 JWT 등에 이메일 클레임이 있을 때만 추출 (서명 검증 없음 — 표시용) */
 function tryDecodeEmailFromInvitationJwt(token: string): string | null {
@@ -64,7 +80,10 @@ function InvitationSignupContent() {
     searchParams.get("invite")
   )?.trim() ?? ""
 
-  const emailFromQuery = searchParams.get("email")?.trim() ?? ""
+  const emailFromQuery = useMemo(
+    () => decodeEmailQueryParam(searchParams.get("email") ?? ""),
+    [searchParams],
+  )
 
   const [email, setEmail] = useState("")
   const [displayName, setDisplayName] = useState("")
@@ -79,29 +98,28 @@ function InvitationSignupContent() {
   const [emailLockedFromInvite, setEmailLockedFromInvite] = useState(false)
   const [inviteEmailLoading, setInviteEmailLoading] = useState(false)
 
+  /** URL 쿼리의 이메일을 깜빡임 없이 먼저 반영 */
+  useLayoutEffect(() => {
+    if (emailFromQuery && emailPattern.test(emailFromQuery)) {
+      setEmail(emailFromQuery)
+      setEmailLockedFromInvite(Boolean(invitationToken))
+    }
+  }, [emailFromQuery, invitationToken])
+
   useEffect(() => {
     let cancelled = false
 
-    async function resolveInviteEmail() {
-      if (emailFromQuery && emailPattern.test(emailFromQuery)) {
-        if (!cancelled) {
-          setEmail(emailFromQuery)
-          setEmailLockedFromInvite(Boolean(invitationToken))
-        }
-        return
-      }
-
+    async function resolveInviteFromApi() {
       if (!invitationToken) return
 
       setInviteEmailLoading(true)
       try {
         const preview = await fetchInvitationSignupPreview(invitationToken)
-        if (!cancelled && preview.ok) {
-          setEmail(preview.email)
-          setEmailLockedFromInvite(true)
-          if (preview.displayName) {
-            setDisplayName(preview.displayName)
-          }
+        if (cancelled) return
+        if (preview.ok) {
+          setEmail((prev) => (preview.email ? preview.email : prev))
+          if (preview.email) setEmailLockedFromInvite(true)
+          if (preview.displayName) setDisplayName(preview.displayName)
           return
         }
       } finally {
@@ -115,11 +133,11 @@ function InvitationSignupContent() {
       }
     }
 
-    void resolveInviteEmail()
+    void resolveInviteFromApi()
     return () => {
       cancelled = true
     }
-  }, [emailFromQuery, invitationToken])
+  }, [invitationToken])
 
   const normalizedEmail = email.trim()
   const isEmailValid = emailPattern.test(normalizedEmail)
@@ -202,8 +220,7 @@ function InvitationSignupContent() {
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">초대 회원가입</h1>
         <p className="text_sm_medium gray_gray_500_t">
-          기업담당자 초대로 가입합니다. 이름은 계정에 표시됩니다. 가입 이메일은
-          초대에 연결된 주소로 처리되며, 서버에는 보내지 않습니다.
+          초대된 이메일은 아래에 자동으로 채워집니다. 이름은 계정에 표시됩니다.
         </p>
 
         <form
@@ -211,6 +228,49 @@ function InvitationSignupContent() {
           noValidate
           onSubmit={handleSubmit}
         >
+          <div className={fieldWrapperClass}>
+            <label htmlFor="email" className="text_lg_medium black_black_400_t">
+              이메일
+            </label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="초대 정보를 불러오는 중…"
+              variant="outlined"
+              inputSize="md"
+              className={cn(
+                inputClass,
+                showEmailInvalid && errorInputClass,
+                emailLockedFromInvite &&
+                  "cursor-default bg-[#F5F5F5] text-[var(--gray-gray-500)]",
+              )}
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              readOnly={emailLockedFromInvite}
+              onBlur={() => setEmailTouched(true)}
+              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={showEmailInvalid}
+            />
+            {inviteEmailLoading ? (
+              <p className="text_sm_medium gray_gray_500_t">
+                초대 정보를 불러오는 중…
+              </p>
+            ) : null}
+            {!inviteEmailLoading && normalizedEmail.length === 0 ? (
+              <p className="text_xs_regular gray_gray_500_t">
+                이메일이 비어 있으면 링크에 <code className="text-xs">email</code>{" "}
+                쿼리가 있는지 확인하거나, 잠시 후 다시 열어 주세요.
+              </p>
+            ) : null}
+            {showEmailInvalid && (
+              <p className="text_sm_medium text-[#F97B22]">
+                올바른 이메일 형식으로 입력해 주세요.
+              </p>
+            )}
+          </div>
+
           <div className={fieldWrapperClass}>
             <label
               htmlFor="displayName"
@@ -247,44 +307,6 @@ function InvitationSignupContent() {
             {showDisplayNameTooLong && (
               <p className="text_sm_medium text-[#F97B22]">
                 이름은 100자 이하여야 합니다.
-              </p>
-            )}
-          </div>
-
-          <div className={fieldWrapperClass}>
-            <label htmlFor="email" className="text_lg_medium black_black_400_t">
-              이메일 (안내)
-            </label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="초대에 연결된 이메일이 여기 표시됩니다"
-              variant="outlined"
-              inputSize="md"
-              className={cn(inputClass, showEmailInvalid && errorInputClass)}
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              readOnly={emailLockedFromInvite}
-              onBlur={() => setEmailTouched(true)}
-              onChange={(event) => setEmail(event.target.value)}
-              aria-invalid={showEmailInvalid}
-            />
-            {inviteEmailLoading ? (
-              <p className="text_sm_medium gray_gray_500_t">
-                초대 정보를 불러오는 중…
-              </p>
-            ) : null}
-            {!inviteEmailLoading && normalizedEmail.length === 0 ? (
-              <p className="text_xs_regular gray_gray_500_t">
-                표시가 비어 있어도 가입은 가능합니다. 로그인 시 초대된 이메일을
-                사용하세요.
-              </p>
-            ) : null}
-            {showEmailInvalid && (
-              <p className="text_sm_medium text-[#F97B22]">
-                올바른 이메일 형식으로 입력해 주세요.
               </p>
             )}
           </div>

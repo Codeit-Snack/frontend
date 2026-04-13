@@ -262,27 +262,78 @@ export type InvitationSignupPayload = {
   displayName: string;
 };
 
+function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function pickEmailFromShallow(o: Record<string, unknown>): string | null {
+  const keys = [
+    "email",
+    "inviteeEmail",
+    "invitedEmail",
+    "invitee_email",
+    "userEmail",
+    "mail",
+  ] as const;
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && looksLikeEmail(v)) return v.trim();
+  }
+  return null;
+}
+
+/** 루트·중첩(user, invitee 등)에서 초대 대상 이메일 추출 */
 function pickEmailFromRecord(o: Record<string, unknown>): string | null {
-  const raw =
-    (typeof o.email === "string" && o.email) ||
-    (typeof o.inviteeEmail === "string" && o.inviteeEmail) ||
-    (typeof o.invitedEmail === "string" && o.invitedEmail) ||
-    (typeof o.invitee_email === "string" && o.invitee_email) ||
-    null;
-  const trimmed = raw?.trim() ?? "";
-  return trimmed.length > 0 ? trimmed : null;
+  const direct = pickEmailFromShallow(o);
+  if (direct) return direct;
+
+  const nestedKeys = [
+    "user",
+    "invitee",
+    "invitation",
+    "member",
+    "targetUser",
+    "invitationInfo",
+  ] as const;
+  for (const key of nestedKeys) {
+    const v = o[key];
+    if (v && typeof v === "object" && v !== null) {
+      const inner = pickEmailFromShallow(v as Record<string, unknown>);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+
+function pickDisplayNameFromShallow(o: Record<string, unknown>): string | null {
+  const keys = [
+    "displayName",
+    "name",
+    "inviteeName",
+    "invitee_name",
+    "userName",
+  ] as const;
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (t.length >= 1 && t.length <= 100) return t;
+    }
+  }
+  return null;
 }
 
 function pickDisplayNameFromRecord(o: Record<string, unknown>): string | null {
-  const raw =
-    (typeof o.displayName === "string" && o.displayName) ||
-    (typeof o.name === "string" && o.name) ||
-    (typeof o.inviteeName === "string" && o.inviteeName) ||
-    (typeof o.invitee_name === "string" && o.invitee_name) ||
-    null;
-  const trimmed = raw?.trim() ?? "";
-  if (trimmed.length < 1 || trimmed.length > 100) return null;
-  return trimmed;
+  const direct = pickDisplayNameFromShallow(o);
+  if (direct) return direct;
+  for (const key of ["user", "invitee", "member"] as const) {
+    const v = o[key];
+    if (v && typeof v === "object" && v !== null) {
+      const inner = pickDisplayNameFromShallow(v as Record<string, unknown>);
+      if (inner) return inner;
+    }
+  }
+  return null;
 }
 
 /**
@@ -297,18 +348,18 @@ export async function fetchInvitationSignupPreview(
   const t = normalizeInvitationToken(invitationToken);
   if (!t) return { ok: false };
 
-  const tryUrls = [
-    (() => {
-      const u = new URL(`${API_BASE_URL}/api/invitations/signup`);
-      u.searchParams.set("token", t);
+  const buildPreviewUrl = (param: "token" | "invitationToken") => {
+    if (typeof window !== "undefined") {
+      const u = new URL("/api/invitations/signup", window.location.origin);
+      u.searchParams.set(param, t);
       return u.toString();
-    })(),
-    (() => {
-      const u = new URL(`${API_BASE_URL}/api/invitations/signup`);
-      u.searchParams.set("invitationToken", t);
-      return u.toString();
-    })(),
-  ];
+    }
+    const u = new URL(`${API_BASE_URL}/api/invitations/signup`);
+    u.searchParams.set(param, t);
+    return u.toString();
+  };
+
+  const tryUrls = [buildPreviewUrl("token"), buildPreviewUrl("invitationToken")];
 
   let res: Response | null = null;
   try {
@@ -341,9 +392,13 @@ export async function fetchInvitationSignupPreview(
     } else {
       data = root;
     }
-    const email = pickEmailFromRecord(data);
+    const email =
+      pickEmailFromRecord(root) || (data ? pickEmailFromRecord(data) : null);
     if (!email) return { ok: false };
-    const displayName = pickDisplayNameFromRecord(data) ?? undefined;
+    const displayName =
+      pickDisplayNameFromRecord(root) ||
+      (data ? pickDisplayNameFromRecord(data) : null) ||
+      undefined;
     return { ok: true, email, ...(displayName ? { displayName } : {}) };
   } catch {
     return { ok: false };
