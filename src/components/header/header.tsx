@@ -227,7 +227,7 @@ export function LoginHeader({ className = "" }: ClassNameProps) {
             로그인
           </Link>
           <Link
-            href="/signup"
+            href="/signup/super-admin"
             className="text_header_nav_bold shrink-0 text-white transition-colors hover:text-white/80"
           >
             기본 당일권 회원가입
@@ -349,7 +349,7 @@ export function MobileHeader({
                       로그인
                     </Link>
                     <Link
-                      href="/signup"
+                      href="/signup/super-admin"
                       className="py-4 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors text-base"
                       onClick={() => setOpen(false)}
                     >
