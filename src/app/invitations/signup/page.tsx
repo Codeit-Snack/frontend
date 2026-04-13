@@ -15,10 +15,7 @@ import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
-import {
-  fetchInvitationSignupPreview,
-  signupWithInvitation,
-} from "@/lib/api/auth"
+import { signupWithInvitation } from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
 
 const fieldWrapperClass =
@@ -96,8 +93,6 @@ function InvitationSignupContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [emailLockedFromInvite, setEmailLockedFromInvite] = useState(false)
-  const [inviteEmailLoading, setInviteEmailLoading] = useState(false)
-
   /** URL 쿼리의 이메일을 깜빡임 없이 먼저 반영 */
   useLayoutEffect(() => {
     if (emailFromQuery && emailPattern.test(emailFromQuery)) {
@@ -106,36 +101,13 @@ function InvitationSignupContent() {
     }
   }, [emailFromQuery, invitationToken])
 
+  /** 백엔드에 GET 미리보기가 없음 → JWT 토큰일 때만 페이로드에서 이메일 추출 */
   useEffect(() => {
-    let cancelled = false
-
-    async function resolveInviteFromApi() {
-      if (!invitationToken) return
-
-      setInviteEmailLoading(true)
-      try {
-        const preview = await fetchInvitationSignupPreview(invitationToken)
-        if (cancelled) return
-        if (preview.ok) {
-          setEmail((prev) => (preview.email ? preview.email : prev))
-          if (preview.email) setEmailLockedFromInvite(true)
-          if (preview.displayName) setDisplayName(preview.displayName)
-          return
-        }
-      } finally {
-        if (!cancelled) setInviteEmailLoading(false)
-      }
-
-      const fromJwt = tryDecodeEmailFromInvitationJwt(invitationToken)
-      if (!cancelled && fromJwt) {
-        setEmail(fromJwt)
-        setEmailLockedFromInvite(true)
-      }
-    }
-
-    void resolveInviteFromApi()
-    return () => {
-      cancelled = true
+    if (!invitationToken) return
+    const fromJwt = tryDecodeEmailFromInvitationJwt(invitationToken)
+    if (fromJwt) {
+      setEmail(fromJwt)
+      setEmailLockedFromInvite(true)
     }
   }, [invitationToken])
 
@@ -171,7 +143,6 @@ function InvitationSignupContent() {
     passwordConfirm.trim().length > 0 &&
     password === passwordConfirm &&
     !isSubmitting &&
-    !inviteEmailLoading &&
     (normalizedEmail.length === 0 || isEmailValid)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -220,7 +191,8 @@ function InvitationSignupContent() {
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">초대 회원가입</h1>
         <p className="text_sm_medium gray_gray_500_t">
-          초대된 이메일은 아래에 자동으로 채워집니다. 이름은 계정에 표시됩니다.
+          초대 메일 링크에 <code className="text-xs">email</code> 쿼리가 있으면
+          이메일이 자동 입력됩니다. 이름은 계정에 표시됩니다.
         </p>
 
         <form
@@ -236,7 +208,7 @@ function InvitationSignupContent() {
               id="email"
               name="email"
               type="email"
-              placeholder="초대 정보를 불러오는 중…"
+              placeholder="초대된 이메일 (자동 입력)"
               variant="outlined"
               inputSize="md"
               className={cn(
@@ -253,15 +225,10 @@ function InvitationSignupContent() {
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={showEmailInvalid}
             />
-            {inviteEmailLoading ? (
-              <p className="text_sm_medium gray_gray_500_t">
-                초대 정보를 불러오는 중…
-              </p>
-            ) : null}
-            {!inviteEmailLoading && normalizedEmail.length === 0 ? (
+            {normalizedEmail.length === 0 ? (
               <p className="text_xs_regular gray_gray_500_t">
-                이메일이 비어 있으면 링크에 <code className="text-xs">email</code>{" "}
-                쿼리가 있는지 확인하거나, 잠시 후 다시 열어 주세요.
+                자동 입력이 없으면 백엔드에서 초대 링크에{" "}
+                <code className="text-xs">?email=초대주소</code> 를 붙여 주세요.
               </p>
             ) : null}
             {showEmailInvalid && (
