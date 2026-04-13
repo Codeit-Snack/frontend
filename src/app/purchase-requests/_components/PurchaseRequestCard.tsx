@@ -37,7 +37,9 @@ export function PurchaseRequestCard({
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
         className,
       )}
-      onClick={() => router.push("/purchase-request-detail")}
+      onClick={() =>
+        router.push(`/purchase-request-detail?id=${encodeURIComponent(item.id)}`)
+      }
     >
       {/* 상단: 상품 정보 + 요청 취소 버튼 */}
       <div className="flex items-start gap-3 mb-6">

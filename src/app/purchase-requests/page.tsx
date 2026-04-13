@@ -6,7 +6,7 @@ import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
 import type { PurchaseRequestItem, PurchaseRequestSort } from "./_types";
-import { SEED_PURCHASE_REQUESTS } from "./_data";
+import { cancelPurchaseRequest, getPurchaseRequests } from "./_api";
 import { SortDropdown } from "./_components/SortDropdown";
 import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
@@ -43,10 +43,16 @@ export default function PurchaseRequestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
-  const [items, setItems] = useState<PurchaseRequestItem[]>(SEED_PURCHASE_REQUESTS);
+  const [items, setItems] = useState<PurchaseRequestItem[]>([]);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
-  const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.max(serverTotalPages, Math.ceil(sortedItems.length / ITEMS_PER_PAGE))
+  );
 
   // 현재 페이지가 총 페이지 수를 넘지 않도록 보정 (예: 10페이지에서 이전으로 갔을 때)
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -56,23 +62,54 @@ export default function PurchaseRequestsPage() {
     }
   }, [currentPage, totalPages]);
 
-  const pageItems = useMemo(
-    () => paginate(sortedItems, safePage, ITEMS_PER_PAGE),
-    [sortedItems, safePage]
-  );
+  const pageItems = useMemo(() => {
+    if (serverTotalPages > 1 || safePage > 1) return sortedItems;
+    return paginate(sortedItems, safePage, ITEMS_PER_PAGE);
+  }, [serverTotalPages, safePage, sortedItems]);
+
+  const fetchList = useCallback(async (page: number) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const result = await getPurchaseRequests({ page, limit: ITEMS_PER_PAGE });
+      setItems(result.items);
+      setServerTotalPages(result.totalPages);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "구매 요청 목록을 불러오지 못했습니다.";
+      setErrorMessage(message);
+      setItems([]);
+      setServerTotalPages(1);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchList(safePage);
+  }, [fetchList, safePage]);
 
   const handleCancelRequest = useCallback((item: PurchaseRequestItem) => {
     setCancelTarget(item);
     setModalOpen(true);
   }, []);
 
-  const handleConfirmCancel = useCallback(() => {
+  const handleConfirmCancel = useCallback(async () => {
     if (!cancelTarget) return;
-    setItems((prev) =>
-      prev.filter((i) => i.id !== cancelTarget.id)
-    );
-    setCancelTarget(null);
-  }, [cancelTarget]);
+    try {
+      await cancelPurchaseRequest(cancelTarget.id);
+      await fetchList(safePage);
+      setCancelTarget(null);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "구매 요청 취소에 실패했습니다.";
+      setErrorMessage(message);
+    }
+  }, [cancelTarget, fetchList, safePage]);
 
   const isMobile = device === "mobile";
 
@@ -94,7 +131,15 @@ export default function PurchaseRequestsPage() {
             <SortDropdown value={sort} onChange={setSort} />
           </div>
 
-          {sortedItems.length === 0 ? (
+          {errorMessage ? (
+            <div className="rounded-xl bg-white px-6 py-10 text-center text-[var(--gray-gray-500,#999)]">
+              {errorMessage}
+            </div>
+          ) : isLoading ? (
+            <div className="rounded-xl bg-white px-6 py-10 text-center text-[var(--gray-gray-500,#999)]">
+              구매 요청 목록을 불러오는 중입니다.
+            </div>
+          ) : sortedItems.length === 0 ? (
             <EmptyState />
           ) : (
             <>

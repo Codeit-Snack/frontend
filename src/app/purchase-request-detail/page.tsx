@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useDevice } from "@/hooks/use-device";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
-import { APPROVAL_INFO, DETAIL_ITEMS, REQUEST_INFO } from "./_data";
+import { getPurchaseRequestDetail, type PurchaseRequestDetailData } from "../purchase-requests/_api";
 
 function formatPrice(value: number) {
   return `${value.toLocaleString()}원`;
@@ -28,19 +29,63 @@ function InfoField({ label, value }: { label: string; value: string }) {
 }
 
 export default function PurchaseRequestDetailPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const device = useDevice();
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const [requestOpen, setRequestOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
+  const [detail, setDetail] = useState<PurchaseRequestDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const useAccordion = !isDesktop;
+  const requestId = searchParams.get("id");
+
+  useEffect(() => {
+    if (!requestId) {
+      setErrorMessage("구매 요청 ID가 없습니다.");
+      setDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+    const run = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const data = await getPurchaseRequestDetail(requestId);
+        if (!cancelled) setDetail(data);
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "구매 요청 상세를 불러오지 못했습니다.";
+          setErrorMessage(message);
+          setDetail(null);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
   const totalCount = useMemo(
-    () => DETAIL_ITEMS.reduce((acc, cur) => acc + cur.quantity, 0),
-    []
+    () => (detail ? detail.items.reduce((acc, cur) => acc + cur.quantity, 0) : 0),
+    [detail]
   );
   const totalPrice = useMemo(
-    () => DETAIL_ITEMS.reduce((acc, cur) => acc + cur.quantity * cur.unitPrice, 0),
-    []
+    () =>
+      detail
+        ? detail.items.reduce((acc, cur) => acc + cur.quantity * cur.unitPrice, 0)
+        : 0,
+    [detail]
   );
 
   return (
@@ -61,7 +106,7 @@ export default function PurchaseRequestDetailPage() {
 
               <div className="rounded-[20px] border border-[var(--black-black-100,#6B6B6B)] bg-white p-6 xl:p-10">
                 <div className="-mr-6 h-[360px] overflow-y-auto pr-6 lg:h-[460px] xl:-mr-10 xl:h-[560px] xl:pr-10">
-                  {DETAIL_ITEMS.map((item) => {
+                  {(detail?.items ?? []).map((item) => {
                     const rowTotal = item.quantity * item.unitPrice;
                     return (
                       <div
@@ -119,6 +164,7 @@ export default function PurchaseRequestDetailPage() {
                   type="button"
                   variant="outlined"
                   className="!h-14 !min-w-0 !flex-1 !rounded-[16px] !border-0 !bg-[#FFF6E9] text-center text_xl_semibold primary_orange_400_t cursor-pointer xl:!h-[72px]"
+                  onClick={() => router.push("/purchase-requests")}
                 >
                   목록 보기
                 </Button>
@@ -157,10 +203,13 @@ export default function PurchaseRequestDetailPage() {
                 {(requestOpen || !useAccordion) && (
                   <div className="space-y-6 pt-4">
                     <p className="text_xl_regular gray_gray_400_t">
-                      {REQUEST_INFO.requestDate}
+                      {detail?.requestDate ?? "-"}
                     </p>
-                    <InfoField label="요청인" value={REQUEST_INFO.requester} />
-                    <InfoField label="요청 메시지" value={REQUEST_INFO.requestMessage} />
+                    <InfoField label="요청인" value={detail?.requester ?? "-"} />
+                    <InfoField
+                      label="요청 메시지"
+                      value={detail?.requestMessage ?? "-"}
+                    />
                   </div>
                 )}
               </div>
@@ -189,16 +238,26 @@ export default function PurchaseRequestDetailPage() {
                 {(approvalOpen || !useAccordion) && (
                   <div className="space-y-6 pt-4">
                     <p className="text_xl_regular gray_gray_400_t">
-                      {APPROVAL_INFO.approvalDate}
+                      {detail?.approvalDate ?? "-"}
                     </p>
-                    <InfoField label="담당자" value={APPROVAL_INFO.manager} />
-                    <InfoField label="상태" value={APPROVAL_INFO.status} />
-                    <InfoField label="결과 메시지" value={APPROVAL_INFO.resultMessage} />
+                    <InfoField label="담당자" value={detail?.manager ?? "-"} />
+                    <InfoField label="상태" value={detail?.statusLabel ?? "-"} />
+                    <InfoField
+                      label="결과 메시지"
+                      value={detail?.resultMessage ?? "-"}
+                    />
                   </div>
                 )}
               </div>
             </section>
           </div>
+          {(isLoading || errorMessage) && (
+            <div className="mt-6 rounded-xl bg-white px-6 py-5 text-center text-[var(--gray-gray-500,#999)]">
+              {isLoading
+                ? "구매 요청 상세를 불러오는 중입니다."
+                : errorMessage}
+            </div>
+          )}
         </div>
       </main>
     </div>
