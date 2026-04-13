@@ -1,12 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { FormEvent, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { FormEvent, Suspense, useEffect, useState } from "react"
 
 import { FullWidthCenterHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
+import {
+  fetchInvitationSignupPreview,
+  signupWithInvitation,
+} from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
 
 const fieldWrapperClass =
@@ -20,13 +25,96 @@ const passwordPattern = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/
 const passwordGuideText =
   "비밀번호는 8자 이상, 대문자 1개 이상, 특수문자를 포함해야 합니다."
 
-export default function SignupPage() {
+/** 초대 JWT 등에 이메일 클레임이 있을 때만 추출 (서명 검증 없음 — 표시용) */
+function tryDecodeEmailFromInvitationJwt(token: string): string | null {
+  const parts = token.split(".")
+  if (parts.length !== 3) return null
+  try {
+    const payloadSegment = parts[1]
+    const base64 = payloadSegment.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    )
+    const json = JSON.parse(atob(padded)) as Record<string, unknown>
+    const candidates = [
+      json.email,
+      json.inviteeEmail,
+      json.invitedEmail,
+      json.sub,
+    ]
+    for (const c of candidates) {
+      if (typeof c === "string" && emailPattern.test(c.trim())) {
+        return c.trim()
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function SignupPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const invitationToken = (
+    searchParams.get("invitationToken") ??
+    searchParams.get("token") ??
+    searchParams.get("invite")
+  )?.trim() ?? ""
+
+  const emailFromQuery = searchParams.get("email")?.trim() ?? ""
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
   const [emailTouched, setEmailTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [emailLockedFromInvite, setEmailLockedFromInvite] = useState(false)
+  const [inviteEmailLoading, setInviteEmailLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function resolveInviteEmail() {
+      if (emailFromQuery && emailPattern.test(emailFromQuery)) {
+        if (!cancelled) {
+          setEmail(emailFromQuery)
+          setEmailLockedFromInvite(Boolean(invitationToken))
+        }
+        return
+      }
+
+      if (!invitationToken) return
+
+      setInviteEmailLoading(true)
+      try {
+        const preview = await fetchInvitationSignupPreview(invitationToken)
+        if (!cancelled && preview.ok) {
+          setEmail(preview.email)
+          setEmailLockedFromInvite(true)
+          return
+        }
+      } finally {
+        if (!cancelled) setInviteEmailLoading(false)
+      }
+
+      const fromJwt = tryDecodeEmailFromInvitationJwt(invitationToken)
+      if (!cancelled && fromJwt) {
+        setEmail(fromJwt)
+        setEmailLockedFromInvite(true)
+      }
+    }
+
+    void resolveInviteEmail()
+    return () => {
+      cancelled = true
+    }
+  }, [emailFromQuery, invitationToken])
 
   const normalizedEmail = email.trim()
   const isEmailValid = emailPattern.test(normalizedEmail)
@@ -48,20 +136,50 @@ export default function SignupPage() {
     password !== passwordConfirm
 
   const canSubmit =
+    invitationToken.length > 0 &&
     normalizedEmail.length > 0 &&
     isEmailValid &&
     isPasswordValid &&
     passwordConfirm.trim().length > 0 &&
-    password === passwordConfirm
+    password === passwordConfirm &&
+    !isSubmitting &&
+    !inviteEmailLoading
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitted(true)
+    setSubmitError(null)
+
+    if (!invitationToken) {
+      setSubmitError("초대 링크를 통해 접속해 주세요.")
+      return
+    }
 
     if (!canSubmit) return
 
-    // TODO: connect signup API
-    window.alert("회원가입 조건이 충족되었습니다.")
+    setIsSubmitting(true)
+    try {
+      const result = await signupWithInvitation({
+        email: normalizedEmail,
+        password,
+        invitationToken,
+      })
+
+      if (result.ok) {
+        if (result.sessionStarted) {
+          router.push("/productlist")
+        } else {
+          router.push("/login")
+        }
+        return
+      }
+
+      setSubmitError(result.message)
+    } catch {
+      setSubmitError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -72,6 +190,11 @@ export default function SignupPage() {
       />
       <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
         <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
+        {invitationToken ? (
+          <p className="text_sm_medium gray_gray_500_t">
+            초대를 통해 가입합니다. 이메일은 초대 정보에 맞게 채워집니다.
+          </p>
+        ) : null}
 
         <form
           className="flex w-full flex-col items-start gap-8"
@@ -93,11 +216,17 @@ export default function SignupPage() {
               autoComplete="email"
               inputMode="email"
               value={email}
+              readOnly={emailLockedFromInvite}
               onBlur={() => setEmailTouched(true)}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={showEmailInvalid}
               required
             />
+            {inviteEmailLoading ? (
+              <p className="text_sm_medium gray_gray_500_t">
+                초대 정보를 불러오는 중…
+              </p>
+            ) : null}
             {showEmailInvalid && (
               <p className="text_sm_medium text-[#F97B22]">
                 올바른 이메일 형식으로 입력해 주세요.
@@ -166,6 +295,12 @@ export default function SignupPage() {
             )}
           </div>
 
+          {submitError ? (
+            <p className="text_sm_medium w-full max-w-[327px] text-[#F97B22] md:max-w-[640px]">
+              {submitError}
+            </p>
+          ) : null}
+
           <Button
             type="submit"
             variant="solid"
@@ -173,7 +308,7 @@ export default function SignupPage() {
             disabled={!canSubmit}
             className="h-[54px] w-full max-w-[327px] disabled:cursor-not-allowed disabled:opacity-60 md:h-[64px] md:max-w-[640px]"
           >
-            시작하기
+            {isSubmitting ? "처리 중…" : "시작하기"}
           </Button>
         </form>
 
@@ -188,5 +323,26 @@ export default function SignupPage() {
         </p>
       </section>
     </main>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
+          <FullWidthCenterHeader
+            className="absolute left-0 top-0 z-10"
+            logoHref="/"
+          />
+          <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
+            <h1 className="text_2xl_semibold black_black_500_t">회원가입</h1>
+            <p className="text_sm_medium gray_gray_500_t">불러오는 중…</p>
+          </section>
+        </main>
+      }
+    >
+      <SignupPageContent />
+    </Suspense>
   )
 }
