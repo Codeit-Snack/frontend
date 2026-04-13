@@ -6,7 +6,7 @@ import type {
 } from "./types"
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://ec2-100-54-94-172.compute-1.amazonaws.com"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com"
 
 function getAccessToken() {
   if (typeof window === "undefined") return null
@@ -51,7 +51,9 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken()
   const hasBody = init?.body !== undefined
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const url = `${API_BASE_URL}${path}`
+
+  const response = await fetch(url, {
     ...init,
     headers: {
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
@@ -73,7 +75,7 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     console.error("[budget-api] request failed", {
       method: init?.method ?? "GET",
-      url: `${API_BASE_URL}${path}`,
+      url,
       status: response.status,
       response: json,
     })
