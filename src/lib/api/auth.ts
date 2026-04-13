@@ -63,7 +63,7 @@ async function serializeLoginRequestBody(
 
 /**
  * `POST /api/auth/signup` — 최초 기업담당자(조직 생성) 가입 전용.
- * 초대로 가입하는 일반 회원·조직 관리자는 프론트 `/invitations/signup` + `POST /api/invitations/signup` 플로우입니다.
+ * 초대로 가입하는 일반 회원·조직 관리자는 메일의 `/invite/accept?token=…` → `/invitations/signup` + `POST /api/invitations/signup` 플로우입니다.
  */
 export type AdminSignupPayload = {
   email: string;
