@@ -106,9 +106,9 @@ export default function SuperAdminSignupPage() {
           기업담당자 회원가입
         </h1>
         <p className="text_sm_medium gray_gray_500_t">
-          그룹 내 일반 회원·관리자는 기업담당자가 보낸 초대 메일의 링크(
-          <span className="whitespace-nowrap">/invitations/signup</span>)로
-          가입할 수 있습니다.
+          그룹 내 일반 회원·관리자는 초대 메일의 링크(
+          <span className="whitespace-nowrap">/invite/accept?token=…</span>)를
+          통해 가입할 수 있습니다.
         </p>
 
         <form

@@ -480,6 +480,7 @@ export async function fetchMyOrganizationProfile(): Promise<MyOrganizationProfil
 /**
  * 기업담당자가 조직원(일반·관리자) 초대 메일 발송.
  * 백엔드: `POST /invitations/organizations/{organizationId}/invite` (앱에서는 `/api` 프리픽스 포함)
+ * 수신 메일의 가입 링크는 보통 프론트 `/invite/accept?token=…` 입니다.
  */
 export async function inviteMember(input: InviteMemberInput) {
   const organizationId = await resolveOrganizationId(input.organizationId);
