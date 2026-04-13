@@ -1,24 +1,42 @@
-"use client"
-
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useEffect } from "react"
+import { redirect } from "next/navigation"
 
 import { FullWidthCenterHeader } from "@/components/header"
 
+type RawSearch = Record<string, string | string[] | undefined>
+
+function getToken(sp: RawSearch): string {
+  const t = sp.token
+  const s = Array.isArray(t) ? t[0] : t
+  return (s ?? "").trim()
+}
+
+function buildQuery(sp: RawSearch): string {
+  const q = new URLSearchParams()
+  for (const [key, raw] of Object.entries(sp)) {
+    if (raw === undefined) continue
+    if (Array.isArray(raw)) {
+      for (const v of raw) {
+        if (v !== undefined && v !== "") q.append(key, v)
+      }
+    } else if (raw !== "") {
+      q.append(key, raw)
+    }
+  }
+  return q.toString()
+}
+
 /**
  * 초대 메일에서 열리는 진입 URL: `/invite/accept?token=…`
- * 실제 가입 폼은 `/invitations/signup`에서 동일 쿼리로 처리합니다.
+ * → `/invitations/signup`으로 같은 쿼리를 넘깁니다. (서버에서 redirect)
  */
-function InviteAcceptContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")?.trim() ?? ""
-
-  useEffect(() => {
-    if (!token) return
-    router.replace(`/invitations/signup?${searchParams.toString()}`)
-  }, [router, searchParams, token])
+export default async function InviteAcceptPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearch>
+}) {
+  const sp = await searchParams
+  const token = getToken(sp)
 
   if (!token) {
     return (
@@ -44,37 +62,6 @@ function InviteAcceptContent() {
     )
   }
 
-  return (
-    <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-      <FullWidthCenterHeader
-        className="absolute left-0 top-0 z-10"
-        logoHref="/"
-      />
-      <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
-        <h1 className="text_2xl_semibold black_black_500_t">초대 수락</h1>
-        <p className="text_sm_medium gray_gray_500_t">회원가입 페이지로 이동 중…</p>
-      </section>
-    </main>
-  )
-}
-
-export default function InviteAcceptPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="relative min-h-screen bg-white px-6 pb-12 pt-[86px] md:pt-[96px] lg:pt-[120px]">
-          <FullWidthCenterHeader
-            className="absolute left-0 top-0 z-10"
-            logoHref="/"
-          />
-          <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
-            <h1 className="text_2xl_semibold black_black_500_t">초대 수락</h1>
-            <p className="text_sm_medium gray_gray_500_t">불러오는 중…</p>
-          </section>
-        </main>
-      }
-    >
-      <InviteAcceptContent />
-    </Suspense>
-  )
+  const q = buildQuery(sp)
+  redirect(q ? `/invitations/signup?${q}` : "/invitations/signup")
 }
