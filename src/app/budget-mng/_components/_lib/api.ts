@@ -5,8 +5,14 @@ import type {
   PostBudgetPeriodBody,
 } from "./types"
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://snack-xlvk.onrender.com"
+/**
+ * Budget API is called via Next Route Handlers:
+ * Browser -> /api/budget/* (same-origin) -> Next Route Handler -> Backend
+ */
+function budgetProxyPath(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`
+  return normalized.startsWith("/api/budget/") ? normalized : `/api/budget${normalized}`
+}
 
 function getAccessToken() {
   if (typeof window === "undefined") return null
@@ -51,7 +57,7 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken()
   const hasBody = init?.body !== undefined
 
-  const url = `${API_BASE_URL}${path}`
+  const url = budgetProxyPath(path)
 
   const response = await fetch(url, {
     ...init,
