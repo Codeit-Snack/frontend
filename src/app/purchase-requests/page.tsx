@@ -59,6 +59,7 @@ function mapToUiItem(item: PurchaseRequestListItem): PurchaseRequestItem {
     totalQuantity: item.itemCount,
     totalAmount: parseAmount(item.totalAmount),
     status: STATUS_MAP[item.status],
+    rawStatus: item.status,
   };
 }
 

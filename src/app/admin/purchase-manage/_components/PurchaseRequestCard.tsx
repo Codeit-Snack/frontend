@@ -6,10 +6,13 @@ import type { PurchaseRequestItem } from "../_types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
-  pending: "승인대기",
-  rejected: "구매 반려",
-  approved: "승인 완료",
+const STATUS_LABEL: Record<PurchaseRequestItem["rawStatus"], string> = {
+  OPEN: "승인 대기",
+  PARTIALLY_APPROVED: "부분 승인",
+  READY_TO_PURCHASE: "구매 준비",
+  REJECTED: "구매 반려",
+  CANCELED: "요청 취소",
+  PURCHASED: "승인 완료",
 };
 
 function formatDateDisplay(dateStr: string) {
@@ -30,7 +33,8 @@ export function PurchaseRequestCard({
   className,
 }: PurchaseRequestCardProps) {
   const router = useRouter();
-  const canAction = item.status === "pending";
+  const canAction =
+    item.rawStatus === "OPEN" || item.rawStatus === "PARTIALLY_APPROVED";
 
   return (
     <div
@@ -38,7 +42,7 @@ export function PurchaseRequestCard({
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
         className
       )}
-      onClick={() => router.push("/admin/purchase-manage/detail")}
+      onClick={() => router.push(`/admin/purchase-manage/detail?id=${item.id}`)}
     >
       <div className="mb-6 flex items-start gap-3">
         <div className="relative h-[80px] w-[80px] shrink-0 overflow-hidden rounded-[8px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white p-4">
@@ -122,12 +126,17 @@ export function PurchaseRequestCard({
           <span
             className={cn(
               "font-[Pretendard] text-[14px] font-normal leading-[22px]",
-              item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
-              (item.status === "rejected" || item.status === "approved") &&
+              (item.rawStatus === "OPEN" ||
+                item.rawStatus === "PARTIALLY_APPROVED" ||
+                item.rawStatus === "READY_TO_PURCHASE") &&
+                "text-[var(--black-black-100,#6B6B6B)]",
+              (item.rawStatus === "REJECTED" ||
+                item.rawStatus === "CANCELED" ||
+                item.rawStatus === "PURCHASED") &&
                 "text-[var(--gray-gray-400,#ABABAB)]"
             )}
           >
-            {STATUS_LABEL[item.status]}
+            {STATUS_LABEL[item.rawStatus]}
           </span>
         </div>
       </div>
