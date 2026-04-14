@@ -109,7 +109,6 @@ async function findPendingSellerOrderByRequestId(
     const response = await getSellerPurchaseOrders({
       page,
       limit: 100,
-      status: "PENDING_SELLER_APPROVAL",
     });
     totalPages = response.totalPages;
 
@@ -216,15 +215,15 @@ export default function PurchaseManagePage() {
     setModalOpen(true);
   }, []);
 
-  const handleConfirmCancel = useCallback(async () => {
+  const handleConfirmCancel = useCallback(async (reason: string) => {
     if (!cancelTarget || actionLoading) return;
     try {
       setActionLoading(true);
       const order = await findPendingSellerOrderByRequestId(cancelTarget.id);
       if (!order) {
-        throw new Error("반려 가능한 판매자 주문을 찾지 못했습니다.");
+        throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
       }
-      await rejectSellerPurchaseOrder({ orderId: order.id });
+      await rejectSellerPurchaseOrder({ orderId: order.id, decisionMessage: reason });
       await fetchList(currentPage, sort);
     } catch (error) {
       setErrorMessage(
@@ -344,7 +343,7 @@ export default function PurchaseManagePage() {
             setActionLoading(true);
             const order = await findPendingSellerOrderByRequestId(approveTarget.id);
             if (!order) {
-              throw new Error("승인 가능한 판매자 주문을 찾지 못했습니다.");
+              throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
             }
             await approveSellerPurchaseOrder({
               orderId: order.id,
