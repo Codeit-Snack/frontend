@@ -1,8 +1,10 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Sort } from "@/components/ui/sort"
+import { cn } from "@/lib/utils"
 import type { SortOption } from "../_lib/types"
 
 type SortOptionItem = { value: SortOption; label: string }
@@ -14,6 +16,8 @@ interface ProductListHeaderProps {
   sortOptions: readonly SortOptionItem[]
   selectedSort: SortOption
   onSelectSort: (value: SortOption) => void
+  /** 검색 입력란 왼쪽에 표시 (예: 카테고리 관리 버튼) */
+  searchLeading?: ReactNode
 }
 
 export function ProductListHeader({
@@ -23,6 +27,7 @@ export function ProductListHeader({
   sortOptions,
   selectedSort,
   onSelectSort,
+  searchLeading,
 }: ProductListHeaderProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -46,14 +51,35 @@ export function ProductListHeader({
     <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <h1 className="text-2xl font-bold text-[#37352f] lg:text-3xl">상품 리스트</h1>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <Input
-          variant="search"
-          inputSize="sm"
-          value={keyword}
-          onChange={(event) => onChangeKeyword(event.target.value)}
-          placeholder="상품명으로 검색하세요"
-        />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+        {searchLeading ? (
+          <div className="shrink-0 self-start md:self-center">{searchLeading}</div>
+        ) : null}
+
+        {searchLeading ? (
+          <div
+            className={cn(
+              "min-w-0 flex-1",
+              "[&>div]:w-full [&>div]:max-w-full md:[&>div]:max-w-[560px]",
+            )}
+          >
+            <Input
+              variant="search"
+              inputSize="sm"
+              value={keyword}
+              onChange={(event) => onChangeKeyword(event.target.value)}
+              placeholder="상품명으로 검색하세요"
+            />
+          </div>
+        ) : (
+          <Input
+            variant="search"
+            inputSize="sm"
+            value={keyword}
+            onChange={(event) => onChangeKeyword(event.target.value)}
+            placeholder="상품명으로 검색하세요"
+          />
+        )}
 
         <div ref={containerRef} className="relative self-end md:self-auto">
           <Sort
