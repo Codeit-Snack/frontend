@@ -49,3 +49,12 @@ export interface CreateProductInput {
 }
 
 export type UpdateProductInput = Partial<CreateProductInput>
+
+/** POST /api/categories 요청 (CreateCategoryDto) */
+export interface CreateCategoryInput {
+  name: string
+  /** 소분류일 때만 부모(대분류) id */
+  parentId?: number | null
+  sortOrder?: number
+  isActive?: boolean
+}

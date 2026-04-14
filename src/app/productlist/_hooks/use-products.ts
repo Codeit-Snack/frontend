@@ -34,6 +34,7 @@ export function useProducts() {
 
   const [catalogRows, setCatalogRows] = useState<CatalogCategory[]>([])
   const [categoriesError, setCategoriesError] = useState<string | null>(null)
+  const [categoriesRefreshKey, setCategoriesRefreshKey] = useState(0)
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<number | null>(null)
@@ -63,6 +64,10 @@ export function useProducts() {
     return () => {
       cancelled = true
     }
+  }, [categoriesRefreshKey])
+
+  const refreshCategories = useCallback(() => {
+    setCategoriesRefreshKey((k) => k + 1)
   }, [])
 
   useEffect(() => {
@@ -200,5 +205,6 @@ export function useProducts() {
     setSubCategory: handleSelectSubCategory,
     setSort: handleSelectSort,
     refreshProductList,
+    refreshCategories,
   }
 }

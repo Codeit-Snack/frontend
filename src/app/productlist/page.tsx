@@ -4,6 +4,8 @@ import { useState } from "react"
 import { CONTENT_PADDING_X } from "@/components/header"
 import Pagination from "@/components/ui/pagination"
 import { useAuthHeader } from "@/hooks/use-auth-header"
+import { Button } from "@/components/ui/button"
+import { CategoryCreateModal } from "./_components/category-create-modal"
 import { ProductListAddProductButton } from "./_components/productlist-add-product-button"
 import { ProductRegisterModal } from "./_components/product-register-modal"
 import { ProductListFilters } from "./_components/productlist-filters"
@@ -38,9 +40,11 @@ export default function ProductListPage() {
     setSubCategory,
     setSort,
     refreshProductList,
+    refreshCategories,
   } = useProducts()
 
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
 
   const handleOpenRegisterModal = () => {
     setRegisterModalOpen(true)
@@ -52,14 +56,28 @@ export default function ProductListPage() {
 
       <main className={`flex-1 py-6 md:py-8 lg:py-10 ${CONTENT_PADDING_X}`}>
         <section className="mx-auto max-w-7xl">
-          <ProductListHeader
-            keyword={keyword}
-            onChangeKeyword={setKeyword}
-            sortLabel={sortLabel}
-            sortOptions={sortOptions}
-            selectedSort={sort}
-            onSelectSort={setSort}
-          />
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 flex-1">
+              <ProductListHeader
+                keyword={keyword}
+                onChangeKeyword={setKeyword}
+                sortLabel={sortLabel}
+                sortOptions={sortOptions}
+                selectedSort={sort}
+                onSelectSort={setSort}
+              />
+            </div>
+            {canManage ? (
+              <Button
+                type="button"
+                variant="outlined"
+                className="h-10 shrink-0 self-start rounded-[12px] px-4 text-sm md:mt-1 md:self-auto"
+                onClick={() => setCategoryModalOpen(true)}
+              >
+                카테고리 추가
+              </Button>
+            ) : null}
+          </div>
           {categoriesError ? (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
               {categoriesError}
@@ -93,13 +111,21 @@ export default function ProductListPage() {
       </main>
 
       {canManage ? (
-        <ProductRegisterModal
-          open={registerModalOpen}
-          onOpenChange={setRegisterModalOpen}
-          catalogRows={catalogRows}
-          mode="create"
-          onSuccess={refreshProductList}
-        />
+        <>
+          <ProductRegisterModal
+            open={registerModalOpen}
+            onOpenChange={setRegisterModalOpen}
+            catalogRows={catalogRows}
+            mode="create"
+            onSuccess={refreshProductList}
+          />
+          <CategoryCreateModal
+            open={categoryModalOpen}
+            onOpenChange={setCategoryModalOpen}
+            catalogRows={catalogRows}
+            onSuccess={refreshCategories}
+          />
+        </>
       ) : null}
     </div>
   )
