@@ -237,7 +237,7 @@ export const BudgetForm = ({
             </div>
             <Input
               id="monthly-budget"
-              placeholder="3,500,000"
+              placeholder=""
               value={formatWithComma(budgetValue)}
               onChange={(e) => setBudgetValue(parseDigits(e.target.value))}
               className={cn(inputSizeClass, budgetValue.trim() && activeInputClass)}
