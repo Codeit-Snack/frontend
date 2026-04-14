@@ -7,6 +7,14 @@ import { cn } from "@/lib/utils";
 
 const TH_STYLE =
   "text-center font-medium font-[Pretendard] text-[20px] leading-[32px] text-[var(--black-black-100,#6B6B6B)]";
+const STATUS_LABEL: Record<PurchaseRequestItem["rawStatus"], string> = {
+  OPEN: "승인 대기",
+  PARTIALLY_APPROVED: "부분 승인",
+  READY_TO_PURCHASE: "구매 준비",
+  REJECTED: "구매 반려",
+  CANCELED: "요청 취소",
+  PURCHASED: "승인 완료",
+};
 
 interface PurchaseRequestTableProps {
   items: PurchaseRequestItem[];
@@ -72,6 +80,8 @@ export function PurchaseRequestTable({
         </thead>
         <tbody>
           {items.map((item) => {
+            const canAction =
+              item.rawStatus === "OPEN" || item.rawStatus === "PARTIALLY_APPROVED";
             return (
               <tr
                 key={item.id}
@@ -98,31 +108,38 @@ export function PurchaseRequestTable({
                   {item.requester}
                 </td>
                 <td className="whitespace-nowrap px-4 py-6 pr-[80px] text-center">
-                  <div className="inline-flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      size="etc-sm"
-                      className="!h-8 !min-w-0 !w-auto !rounded-lg !border-[var(--gray-gray-300,#C4C4C4)] !px-4 !py-2 font-[Pretendard] !text-[16px] !font-semibold !leading-[24px] !text-[var(--gray-gray-400,#ABABAB)]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      반려
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="solid"
-                      size="etc-sm"
-                      className="!h-8 !min-w-0 !w-auto !rounded-lg !px-4 !py-2 font-[Pretendard] !text-[16px] !font-semibold !leading-[24px]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onApproveRequest(item);
-                      }}
-                    >
-                      승인
-                    </Button>
-                  </div>
+                  {canAction ? (
+                    <div className="inline-flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        size="etc-sm"
+                        className="!h-8 !min-w-0 !w-auto !rounded-lg !border-[var(--gray-gray-300,#C4C4C4)] !px-4 !py-2 font-[Pretendard] !text-[16px] !font-semibold !leading-[24px] !text-[var(--gray-gray-400,#ABABAB)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onCancelRequest(item);
+                        }}
+                      >
+                        반려
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="solid"
+                        size="etc-sm"
+                        className="!h-8 !min-w-0 !w-auto !rounded-lg !px-4 !py-2 font-[Pretendard] !text-[16px] !font-semibold !leading-[24px]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onApproveRequest(item);
+                        }}
+                      >
+                        승인
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="font-[Pretendard] text-[14px] font-semibold leading-[20px] text-[var(--black-black-100,#6B6B6B)]">
+                      {STATUS_LABEL[item.rawStatus]}
+                    </span>
+                  )}
                 </td>
               </tr>
             );

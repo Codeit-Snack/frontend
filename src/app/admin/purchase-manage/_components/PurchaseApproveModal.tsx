@@ -22,7 +22,7 @@ export interface PurchaseApproveModalProps {
   items: PurchaseRequestDetailItem[];
   remainingBudget: number;
   onCancel: () => void;
-  onApprove: () => void;
+  onApprove: (message: string) => void;
 }
 
 export function PurchaseApproveModal({
@@ -171,7 +171,7 @@ export function PurchaseApproveModal({
             variant="solid"
             className="!h-14 min-w-0 flex-[3] !rounded-[14px] !bg-[#FF8225] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-white hover:!bg-[#F06E18]"
             onClick={() => {
-              onApprove();
+              onApprove(approvalMessage.trim());
               onOpenChange(false);
             }}
           >
