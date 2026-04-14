@@ -12,6 +12,8 @@ import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
+import { PurchaseApproveModal } from "./_components/PurchaseApproveModal";
+import { DETAIL_ITEMS } from "./detail/_data";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 6;
@@ -46,6 +48,10 @@ export default function PurchaseManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<PurchaseRequestItem | null>(
+    null
+  );
   const [items, setItems] = useState<PurchaseRequestItem[]>(SEED_PURCHASE_REQUESTS);
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
@@ -74,6 +80,11 @@ export default function PurchaseManagePage() {
     setCancelTarget(null);
   }, [cancelTarget]);
 
+  const handleApproveRequest = useCallback((item: PurchaseRequestItem) => {
+    setApproveTarget(item);
+    setApproveModalOpen(true);
+  }, []);
+
   const isMobile = device === "mobile";
 
   return (
@@ -81,7 +92,8 @@ export default function PurchaseManagePage() {
       <Header
         device={device}
         isLoggedIn={isLoggedIn}
-        role={role}        cartCount={2}
+        role={role}
+        cartCount={2}
       />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
@@ -115,6 +127,7 @@ export default function PurchaseManagePage() {
                   key={safePage}
                   items={pageItems}
                   onCancelRequest={handleCancelRequest}
+                  onApproveRequest={handleApproveRequest}
                 />
               )}
 
@@ -141,6 +154,19 @@ export default function PurchaseManagePage() {
         }}
         productSummary={cancelTarget?.productSummary ?? ""}
         onConfirm={handleConfirmCancel}
+      />
+
+      <PurchaseApproveModal
+        open={approveModalOpen}
+        onOpenChange={(open) => {
+          setApproveModalOpen(open);
+          if (!open) setApproveTarget(null);
+        }}
+        requesterName={approveTarget?.requester ?? ""}
+        items={DETAIL_ITEMS}
+        remainingBudget={60000}
+        onCancel={() => {}}
+        onApprove={() => {}}
       />
     </div>
   );
