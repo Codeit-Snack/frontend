@@ -49,6 +49,7 @@ export function PurchaseApproveModal({
     return { totalCount: count, totalPrice: price };
   }, [items]);
   const isOverBudget = totalPrice > remainingBudget;
+  const normalizedMessage = approvalMessage.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,11 +176,11 @@ export function PurchaseApproveModal({
           <Button
             type="button"
             variant="solid"
-            disabled={isOverBudget}
+            disabled={isOverBudget || !normalizedMessage}
             className="!h-14 min-w-0 flex-[3] !rounded-[14px] !bg-[#FF8225] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-white hover:!bg-[#F06E18]"
             onClick={() => {
-              if (isOverBudget) return;
-              onApprove(approvalMessage.trim());
+              if (isOverBudget || !normalizedMessage) return;
+              onApprove(normalizedMessage);
             }}
           >
             승인하기
