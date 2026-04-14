@@ -12,6 +12,8 @@ import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
+import { PurchaseApproveModal } from "./_components/PurchaseApproveModal";
+import { DETAIL_ITEMS } from "./detail/_data";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 6;
@@ -31,6 +33,9 @@ function sortItems(
   return copy;
 }
 
+
+
+
 function paginate<T>(list: T[], page: number, perPage: number): T[] {
   const start = (page - 1) * perPage;
   return list.slice(start, start + perPage);
@@ -43,6 +48,10 @@ export default function PurchaseManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<PurchaseRequestItem | null>(
+    null
+  );
   const [items, setItems] = useState<PurchaseRequestItem[]>(SEED_PURCHASE_REQUESTS);
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
@@ -70,6 +79,11 @@ export default function PurchaseManagePage() {
     setItems((prev) => prev.filter((i) => i.id !== cancelTarget.id));
     setCancelTarget(null);
   }, [cancelTarget]);
+
+  const handleApproveRequest = useCallback((item: PurchaseRequestItem) => {
+    setApproveTarget(item);
+    setApproveModalOpen(true);
+  }, []);
 
   const isMobile = device === "mobile";
 
@@ -113,6 +127,7 @@ export default function PurchaseManagePage() {
                   key={safePage}
                   items={pageItems}
                   onCancelRequest={handleCancelRequest}
+                  onApproveRequest={handleApproveRequest}
                 />
               )}
 
@@ -139,6 +154,19 @@ export default function PurchaseManagePage() {
         }}
         productSummary={cancelTarget?.productSummary ?? ""}
         onConfirm={handleConfirmCancel}
+      />
+
+      <PurchaseApproveModal
+        open={approveModalOpen}
+        onOpenChange={(open) => {
+          setApproveModalOpen(open);
+          if (!open) setApproveTarget(null);
+        }}
+        requesterName={approveTarget?.requester ?? ""}
+        items={DETAIL_ITEMS}
+        remainingBudget={60000}
+        onCancel={() => {}}
+        onApprove={() => {}}
       />
     </div>
   );
