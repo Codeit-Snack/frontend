@@ -5,9 +5,6 @@ import type {
   PostBudgetPeriodBody,
 } from "./types"
 
-let hasLoggedBudgetTokenClaims = false
-let hasLoggedTokenSource = false
-
 /**
  * Budget API is called via Next Route Handlers:
  * Browser -> /api/budget/* (same-origin) -> Next Route Handler -> Backend
@@ -20,82 +17,12 @@ function budgetProxyPath(path: string): string {
 function getAccessToken() {
   if (typeof window === "undefined") return null
 
-  const snackAccessToken = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)
-  if (snackAccessToken) {
-    if (!hasLoggedTokenSource) {
-      console.log(`[budget-token] using accessToken key: ${AUTH_ACCESS_TOKEN_KEY}`)
-      hasLoggedTokenSource = true
-    }
-    return snackAccessToken
-  }
-
-  const fallbackToken =
+  return (
+    localStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ??
     localStorage.getItem("accessToken") ??
     localStorage.getItem("token") ??
     localStorage.getItem("authToken")
-  if (!hasLoggedTokenSource) {
-    console.log(
-      fallbackToken
-        ? "[budget-token] using fallback token key (accessToken/token/authToken)"
-        : "[budget-token] no token found in localStorage",
-    )
-    hasLoggedTokenSource = true
-  }
-  return fallbackToken
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payloadPart = token.split(".")[1]
-    if (!payloadPart) return null
-    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/")
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")
-    return JSON.parse(atob(padded)) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-function resolveOrganizationIdFromToken(token: string | null): string | null {
-  if (!token) return null
-  const payload = decodeJwtPayload(token)
-  const raw =
-    payload?.organizationId ??
-    payload?.organization_id ??
-    payload?.orgId ??
-    payload?.org_id
-  if (raw === undefined || raw === null) return null
-  const value = String(raw).trim()
-  return value.length > 0 ? value : null
-}
-
-function logTokenClaimsForDebug(token: string | null) {
-  if (hasLoggedBudgetTokenClaims) return
-  hasLoggedBudgetTokenClaims = true
-
-  if (!token) {
-    console.log("[budget-token] token missing")
-    return
-  }
-
-  const payload = decodeJwtPayload(token)
-  const expRaw = payload?.exp
-  const exp = Number(expRaw)
-  const nowSec = Math.floor(Date.now() / 1000)
-  const organizationId =
-    payload?.organizationId ??
-    payload?.organization_id ??
-    payload?.orgId ??
-    payload?.org_id
-
-  console.log("[budget-token] claims", {
-    iss: payload?.iss,
-    aud: payload?.aud,
-    exp: Number.isFinite(exp) ? exp : expRaw,
-    expISO: Number.isFinite(exp) ? new Date(exp * 1000).toISOString() : null,
-    expired: Number.isFinite(exp) ? exp <= nowSec : null,
-    organizationId,
-  })
+  )
 }
 
 function parseErrorMessage(payload: unknown, fallback: string) {
@@ -128,8 +55,6 @@ function parseErrorMessage(payload: unknown, fallback: string) {
 
 async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken()
-  logTokenClaimsForDebug(token)
-  const organizationId = resolveOrganizationIdFromToken(token)
   const hasBody = init?.body !== undefined
 
   const url = budgetProxyPath(path)
@@ -139,7 +64,6 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(organizationId ? { "X-Organization-Id": organizationId } : {}),
       ...(init?.headers ?? {}),
     },
   })
