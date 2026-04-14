@@ -8,6 +8,7 @@ import type {
   GetProductsResult,
   Product,
   SortOption,
+  UpdateCategoryInput,
   UpdateProductInput,
 } from "./types"
 
@@ -321,6 +322,65 @@ export async function createCategory(
     throw new Error("카테고리 응답을 해석할 수 없습니다.")
   }
   return cat
+}
+
+export async function updateCategory(
+  categoryId: number,
+  input: UpdateCategoryInput,
+): Promise<CatalogCategory> {
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    throw new Error("유효하지 않은 카테고리입니다.")
+  }
+
+  const body: Record<string, unknown> = {}
+  if (input.name !== undefined) {
+    body.name = input.name.trim()
+  }
+  if (input.parentId !== undefined) {
+    body.parentId = input.parentId
+  }
+  if (
+    input.sortOrder !== undefined &&
+    Number.isFinite(input.sortOrder) &&
+    input.sortOrder >= 0
+  ) {
+    body.sortOrder = Math.floor(input.sortOrder)
+  }
+  if (typeof input.isActive === "boolean") {
+    body.isActive = input.isActive
+  }
+
+  if (Object.keys(body).length === 0) {
+    throw new Error("변경할 내용이 없습니다.")
+  }
+
+  const payload = await requestApi<unknown>(`/api/categories/${categoryId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  })
+  const data = getDataPayload(payload)
+  const record =
+    data && typeof data === "object" && !Array.isArray(data) ? data : payload
+  const cat = parseCatalogCategoryRow(record)
+  if (!cat) {
+    throw new Error("카테고리 응답을 해석할 수 없습니다.")
+  }
+  return cat
+}
+
+export async function deleteCategory(categoryId: number): Promise<void> {
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    throw new Error("유효하지 않은 카테고리입니다.")
+  }
+  const { response, json } = await apiFetch(`/api/categories/${categoryId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      parseErrorMessage(json, "삭제에 실패했습니다."),
+    )
+  }
 }
 
 export async function getProducts(

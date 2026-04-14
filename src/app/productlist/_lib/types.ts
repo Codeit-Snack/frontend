@@ -58,3 +58,11 @@ export interface CreateCategoryInput {
   sortOrder?: number
   isActive?: boolean
 }
+
+/** PATCH /api/categories/:id 요청 (UpdateCategoryDto, 필드 생략 시 변경 없음) */
+export interface UpdateCategoryInput {
+  name?: string
+  parentId?: number | null
+  sortOrder?: number
+  isActive?: boolean
+}
