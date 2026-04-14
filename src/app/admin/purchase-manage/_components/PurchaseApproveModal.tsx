@@ -48,6 +48,7 @@ export function PurchaseApproveModal({
     );
     return { totalCount: count, totalPrice: price };
   }, [items]);
+  const isOverBudget = totalPrice > remainingBudget;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,13 +132,18 @@ export function PurchaseApproveModal({
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
             <span className="font-[Pretendard] text-[15px] font-medium leading-[24px] text-[var(--black-black-100,#6B6B6B)]">
               남은 예산 금액
             </span>
-            <span className="font-[Pretendard] text-[17px] font-bold leading-[26px] text-[var(--black-black-400,#1F1F1F)] sm:text-[18px]">
+            <div className="rounded-[16px] border border-[#FFD7BF] bg-white px-5 py-[14px] font-[Pretendard] text-[17px] font-bold leading-[26px] text-[var(--black-black-400,#1F1F1F)] sm:text-[18px]">
               {formatPrice(remainingBudget)}
-            </span>
+            </div>
+            {isOverBudget && (
+              <p className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[#E53935]">
+                구매 금액이 남은 예산을 초과합니다.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -169,10 +175,11 @@ export function PurchaseApproveModal({
           <Button
             type="button"
             variant="solid"
+            disabled={isOverBudget}
             className="!h-14 min-w-0 flex-[3] !rounded-[14px] !bg-[#FF8225] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-white hover:!bg-[#F06E18]"
             onClick={() => {
+              if (isOverBudget) return;
               onApprove(approvalMessage.trim());
-              onOpenChange(false);
             }}
           >
             승인하기
