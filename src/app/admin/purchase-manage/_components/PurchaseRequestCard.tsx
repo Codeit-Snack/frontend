@@ -19,16 +19,18 @@ function formatDateDisplay(dateStr: string) {
 interface PurchaseRequestCardProps {
   item: PurchaseRequestItem;
   onCancelRequest: (item: PurchaseRequestItem) => void;
+  onApproveRequest: (item: PurchaseRequestItem) => void;
   className?: string;
 }
 
 export function PurchaseRequestCard({
   item,
   onCancelRequest,
+  onApproveRequest,
   className,
 }: PurchaseRequestCardProps) {
   const router = useRouter();
-  const canCancel = item.status === "pending";
+  const canAction = item.status === "pending";
 
   return (
     <div
@@ -62,25 +64,35 @@ export function PurchaseRequestCard({
           <p className="mt-0.5 font-[Pretendard] text-[14px] font-medium leading-[22px] text-[var(--gray-gray-500,#999)]">
             총 수량: {item.totalQuantity}개
           </p>
+          {canAction && (
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="button"
+                variant="outlined"
+                size="etc-sm"
+                className="!h-9 !min-w-0 !flex-1 !rounded-lg !border-[var(--gray-gray-300,#C4C4C4)] !px-3 font-[Pretendard] !text-[14px] !font-semibold !leading-[20px] !text-[var(--gray-gray-400,#ABABAB)]"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCancelRequest(item);
+                }}
+              >
+                반려
+              </Button>
+              <Button
+                type="button"
+                variant="solid"
+                size="etc-sm"
+                className="!h-9 !min-w-0 !flex-1 !rounded-lg !px-3 font-[Pretendard] !text-[14px] !font-semibold !leading-[20px]"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onApproveRequest(item);
+                }}
+              >
+                승인
+              </Button>
+            </div>
+          )}
         </div>
-        {canCancel ? (
-          <Button
-            type="button"
-            variant="outlined"
-            size="etc-sm"
-            className="!h-9 !min-w-0 shrink-0 self-end !rounded-lg !border-[var(--primary-orange-400,#F97B22)] !px-3 font-[Pretendard] !text-[14px] !font-semibold !leading-[20px] !text-[var(--primary-orange-400,#F97B22)]"
-            onClick={(event) => {
-              event.stopPropagation();
-              onCancelRequest(item);
-            }}
-          >
-            요청 취소
-          </Button>
-        ) : (
-          <span className="shrink-0 font-[Pretendard] text-[14px] font-semibold leading-[20px] text-[var(--gray-gray-400,#ABABAB)]">
-            -
-          </span>
-        )}
       </div>
 
       <div className="flex items-center justify-between">

@@ -119,6 +119,7 @@ export default function PurchaseManagePage() {
                       key={item.id}
                       item={item}
                       onCancelRequest={handleCancelRequest}
+                      onApproveRequest={handleApproveRequest}
                     />
                   ))}
                 </div>
