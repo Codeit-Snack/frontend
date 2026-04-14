@@ -6,35 +6,135 @@ import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
 import type { PurchaseRequestItem, PurchaseRequestSort } from "./_types";
-import { SEED_PURCHASE_REQUESTS } from "./_data";
 import { SortDropdown } from "./_components/SortDropdown";
 import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
+import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
+import { API_BASE_URL } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 6;
 const SUMMARY_CARDS = [
   {
     title: "이번 달 지출액",
-    subText: "지난 달: 2,000,000원",
-    amount: "126,000원",
+    subText: "데이터 연동 예정",
+    amount: "-",
     gridClassName: "col-span-1 xl:col-span-3",
   },
   {
     title: "이번 달 남은 예산",
-    subText: "지난 달보다 50,000원 더 많아요",
-    amount: "150,000원",
+    subText: "데이터 연동 예정",
+    amount: "-",
     gridClassName: "col-span-1 xl:col-span-3",
   },
   {
     title: "올해 총 지출액",
-    subText: "지난 해보다 1,000,000원 더 지출했어요",
-    amount: "23,000,000원",
+    subText: "데이터 연동 예정",
+    amount: "-",
     gridClassName: "col-span-2 xl:col-span-3",
   },
 ];
+
+function formatDate(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}.${m}.${day}`;
+}
+
+function pickList(payload: unknown): Record<string, unknown>[] {
+  if (Array.isArray(payload)) return payload as Record<string, unknown>[];
+  if (!payload || typeof payload !== "object") return [];
+  const p = payload as Record<string, unknown>;
+  const data =
+    p.data && typeof p.data === "object"
+      ? (p.data as Record<string, unknown>)
+      : p;
+  if (Array.isArray(data.items)) return data.items as Record<string, unknown>[];
+  if (Array.isArray(data.list)) return data.list as Record<string, unknown>[];
+  if (Array.isArray(data.content)) return data.content as Record<string, unknown>[];
+  if (Array.isArray(data.orders)) return data.orders as Record<string, unknown>[];
+  if (Array.isArray(data.purchaseOrders))
+    return data.purchaseOrders as Record<string, unknown>[];
+  return [];
+}
+
+function toHistoryItem(raw: Record<string, unknown>): PurchaseRequestItem | null {
+  const itemList = Array.isArray(raw.items) ? (raw.items as Record<string, unknown>[]) : [];
+  const firstItem = itemList[0] ?? {};
+  const id = String(raw.id ?? raw.orderId ?? raw.purchaseOrderId ?? "").trim();
+  if (!id) return null;
+  const totalQuantity =
+    Number(raw.totalQuantity ?? raw.quantity ?? raw.totalCount) ||
+    itemList.reduce((acc, cur) => acc + Number(cur.quantity ?? 0), 0);
+  const totalAmount = Number(raw.totalAmount ?? raw.amount ?? raw.totalPrice ?? 0);
+  const productName =
+    String(
+      raw.productSummary ??
+        raw.productName ??
+        firstItem.productName ??
+        firstItem.name ??
+        "구매 품목",
+    ).trim() || "구매 품목";
+  const summary =
+    itemList.length > 1 ? `${productName} 외 ${itemList.length - 1}건` : productName;
+
+  return {
+    id,
+    requestDate: formatDate(raw.requestedAt ?? raw.requestDate ?? raw.createdAt),
+    approvalDate: formatDate(raw.approvedAt ?? raw.approvalDate ?? raw.updatedAt),
+    requester: String(
+      raw.requesterName ?? raw.requester ?? raw.requestedByName ?? "요청자",
+    ),
+    manager: String(raw.managerName ?? raw.approverName ?? raw.manager ?? "담당자"),
+    productSummary: summary,
+    totalQuantity: Number.isFinite(totalQuantity) ? totalQuantity : 0,
+    totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
+    status: "approved",
+    imageUrl:
+      typeof firstItem.imageUrl === "string"
+        ? firstItem.imageUrl
+        : typeof firstItem.thumbnailUrl === "string"
+          ? firstItem.thumbnailUrl
+          : undefined,
+  };
+}
+
+async function fetchApprovedPurchaseHistory(): Promise<PurchaseRequestItem[]> {
+  if (typeof window === "undefined") return [];
+  const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)?.trim();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  const paths = [
+    "/api/seller/purchase-orders?status=APPROVED",
+    "/api/seller/purchase-orders?approvalStatus=APPROVED",
+    "/api/seller/purchase-orders/approved",
+  ];
+
+  for (const path of paths) {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      if (res.status === 404) continue;
+      throw new Error(`구매내역 조회에 실패했습니다. (${res.status})`);
+    }
+    const body: unknown = await res.json().catch(() => null);
+    const list = pickList(body).map(toHistoryItem).filter((v): v is PurchaseRequestItem => Boolean(v));
+    return list;
+  }
+
+  return [];
+}
 
 function sortItems(
   items: PurchaseRequestItem[],
@@ -63,7 +163,8 @@ export default function PurchaseHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
-  const [items, setItems] = useState<PurchaseRequestItem[]>(SEED_PURCHASE_REQUESTS);
+  const [items, setItems] = useState<PurchaseRequestItem[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
   const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
@@ -92,6 +193,27 @@ export default function PurchaseHistoryPage() {
   }, [cancelTarget]);
 
   const isMobile = device === "mobile";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await fetchApprovedPurchaseHistory();
+        if (!cancelled) {
+          setItems(list);
+          setLoadError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setItems([]);
+          setLoadError(e instanceof Error ? e.message : "구매내역을 불러오지 못했습니다.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen background_background_400_b">
@@ -128,6 +250,11 @@ export default function PurchaseHistoryPage() {
           <div className="mb-4 mt-4 flex items-center justify-end md:mb-10 md:mt-6">
             <SortDropdown value={sort} onChange={setSort} />
           </div>
+          {loadError ? (
+            <p className="mb-6 text_sm_medium text-[#F97B22]" role="alert">
+              {loadError}
+            </p>
+          ) : null}
 
           {sortedItems.length === 0 ? (
             <EmptyState />

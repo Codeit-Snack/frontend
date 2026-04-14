@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
@@ -53,7 +53,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function PurchaseManageDetailPage() {
+function PurchaseManageDetailContent() {
   const searchParams = useSearchParams();
   const device = useDevice();
   const isDesktop = useMediaQuery("(min-width: 1280px)");
@@ -303,5 +303,28 @@ export default function PurchaseManageDetailPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PurchaseManageDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen background_background_400_b">
+          <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
+            <div className="mx-auto w-full max-w-[1680px]">
+              <h1 className="mb-6 text_3xl_semibold black_black_400_t xl:mb-10">
+                구매 요청 관리
+              </h1>
+              <div className="rounded-xl border border-[var(--gray-gray-200)] bg-white px-5 py-4 text-sm text-[var(--black-black-100,#6B6B6B)]">
+                상세 정보를 불러오는 중입니다.
+              </div>
+            </div>
+          </main>
+        </div>
+      }
+    >
+      <PurchaseManageDetailContent />
+    </Suspense>
   );
 }
