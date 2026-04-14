@@ -56,10 +56,6 @@ export default function CartPage() {
   const totalShipping = checkedItems.reduce((sum, item) => sum + item.shipping, 0);
   const totalPrice = totalProductPrice + totalShipping;
   const totalCount = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const deleteItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
-  const [showComplete, setShowComplete] = useState(false);
-  const [completeMessage, setCompleteMessage] = useState("");
-  const device = useDevice();
 
   const requestItems: RequestItem[] = checkedItems.map((item) => ({
     id: item.id,
