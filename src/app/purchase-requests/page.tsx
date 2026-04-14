@@ -1,39 +1,72 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
 import type { PurchaseRequestItem, PurchaseRequestSort } from "./_types";
-import { SEED_PURCHASE_REQUESTS } from "./_data";
 import { SortDropdown } from "./_components/SortDropdown";
 import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
 import { cn } from "@/lib/utils";
+import {
+  cancelPurchaseRequest,
+  getPurchaseRequestDetail,
+  getPurchaseRequests,
+  type PurchaseRequestListItem,
+  type PurchaseRequestSortParam,
+} from "./_lib/api";
 
 const ITEMS_PER_PAGE = 6;
 
-function sortItems(
-  items: PurchaseRequestItem[],
-  sort: PurchaseRequestSort
-): PurchaseRequestItem[] {
-  const copy = [...items];
-  if (sort === "latest") {
-    copy.sort((a, b) => (b.requestDate > a.requestDate ? 1 : -1));
-  } else if (sort === "amountAsc") {
-    copy.sort((a, b) => a.totalAmount - b.totalAmount);
-  } else {
-    copy.sort((a, b) => b.totalAmount - a.totalAmount);
-  }
-  return copy;
+const STATUS_MAP: Record<PurchaseRequestListItem["status"], PurchaseRequestItem["status"]> = {
+  OPEN: "pending",
+  PARTIALLY_APPROVED: "pending",
+  READY_TO_PURCHASE: "pending",
+  REJECTED: "rejected",
+  CANCELED: "rejected",
+  PURCHASED: "approved",
+};
+
+function toSortParam(sort: PurchaseRequestSort): PurchaseRequestSortParam {
+  if (sort === "amountAsc") return "totalAmount_asc";
+  if (sort === "amountDesc") return "totalAmount_desc";
+  return "requestedAt_desc";
 }
 
-function paginate<T>(list: T[], page: number, perPage: number): T[] {
-  const start = (page - 1) * perPage;
-  return list.slice(start, start + perPage);
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function parseAmount(value: string): number {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function mapToUiItem(item: PurchaseRequestListItem): PurchaseRequestItem {
+  return {
+    id: item.id,
+    requestDate: formatDate(item.requestedAt),
+    productSummary: item.itemCount > 0 ? `요청 품목 ${item.itemCount}건` : "요청 품목 없음",
+    totalQuantity: item.itemCount,
+    totalAmount: parseAmount(item.totalAmount),
+    status: STATUS_MAP[item.status],
+  };
+}
+
+function buildProductSummary(firstItemName: string | undefined, itemCount: number): string {
+  const name = firstItemName?.trim();
+  if (!name) return itemCount > 0 ? `요청 품목 ${itemCount}건` : "요청 품목 없음";
+  const remain = Math.max(0, itemCount - 1);
+  return remain > 0 ? `${name} 외 ${remain}건` : name;
 }
 
 export default function PurchaseRequestsPage() {
@@ -43,36 +76,76 @@ export default function PurchaseRequestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
-  const [items, setItems] = useState<PurchaseRequestItem[]>(SEED_PURCHASE_REQUESTS);
+  const [items, setItems] = useState<PurchaseRequestItem[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
-  const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
+  const fetchList = useCallback(async (page: number, currentSort: PurchaseRequestSort) => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const response = await getPurchaseRequests({
+        page,
+        limit: ITEMS_PER_PAGE,
+        sort: toSortParam(currentSort),
+      });
 
-  // 현재 페이지가 총 페이지 수를 넘지 않도록 보정 (예: 10페이지에서 이전으로 갔을 때)
-  const safePage = Math.min(Math.max(1, currentPage), totalPages);
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+      const enrichedItems = await Promise.all(
+        response.data.map(async (row) => {
+          const base = mapToUiItem(row);
+          try {
+            const detail = await getPurchaseRequestDetail(row.id);
+            const firstItemName = detail.items[0]?.productNameSnapshot;
+            const totalQuantity = detail.items.reduce((sum, item) => sum + item.quantity, 0);
+            return {
+              ...base,
+              productSummary: buildProductSummary(firstItemName, detail.itemCount),
+              totalQuantity,
+            };
+          } catch {
+            return base;
+          }
+        })
+      );
+
+      setItems(enrichedItems);
+      setTotalPages(Math.max(1, response.totalPages));
+      if (page > response.totalPages && response.totalPages > 0) {
+        setCurrentPage(response.totalPages);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "목록을 불러오지 못했습니다."
+      );
+      setItems([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
-  }, [currentPage, totalPages]);
+  }, []);
 
-  const pageItems = useMemo(
-    () => paginate(sortedItems, safePage, ITEMS_PER_PAGE),
-    [sortedItems, safePage]
-  );
+  useEffect(() => {
+    void fetchList(currentPage, sort);
+  }, [currentPage, sort, fetchList]);
 
   const handleCancelRequest = useCallback((item: PurchaseRequestItem) => {
     setCancelTarget(item);
     setModalOpen(true);
   }, []);
 
-  const handleConfirmCancel = useCallback(() => {
+  const handleConfirmCancel = useCallback(async () => {
     if (!cancelTarget) return;
-    setItems((prev) =>
-      prev.filter((i) => i.id !== cancelTarget.id)
-    );
+    try {
+      await cancelPurchaseRequest(cancelTarget.id);
+      await fetchList(currentPage, sort);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "요청 취소에 실패했습니다."
+      );
+    }
     setCancelTarget(null);
-  }, [cancelTarget]);
+  }, [cancelTarget, currentPage, fetchList, sort]);
 
   const isMobile = device === "mobile";
 
@@ -94,16 +167,24 @@ export default function PurchaseRequestsPage() {
             <SortDropdown value={sort} onChange={setSort} />
           </div>
 
-          {sortedItems.length === 0 ? (
+          {errorMessage ? (
+            <div className="rounded-xl border border-[var(--gray-gray-200)] bg-white px-5 py-4 text-sm text-[var(--black-black-100,#6B6B6B)]">
+              {errorMessage}
+            </div>
+          ) : loading ? (
+            <div className="rounded-xl border border-[var(--gray-gray-200)] bg-white px-5 py-4 text-sm text-[var(--black-black-100,#6B6B6B)]">
+              목록을 불러오는 중입니다.
+            </div>
+          ) : items.length === 0 ? (
             <EmptyState />
           ) : (
             <>
               {isMobile ? (
                 <div
-                  key={safePage}
+                  key={currentPage}
                   className="-mx-[clamp(24px,6.25vw,120px)] md:mx-0"
                 >
-                  {pageItems.map((item) => (
+                  {items.map((item) => (
                     <PurchaseRequestCard
                       key={item.id}
                       item={item}
@@ -113,8 +194,8 @@ export default function PurchaseRequestsPage() {
                 </div>
               ) : (
                 <PurchaseRequestTable
-                  key={safePage}
-                  items={pageItems}
+                  key={currentPage}
+                  items={items}
                   onCancelRequest={handleCancelRequest}
                 />
               )}
@@ -122,7 +203,7 @@ export default function PurchaseRequestsPage() {
               <div className="mt-6 flex w-full flex-col items-center justify-center sm:mt-8 sm:flex-row sm:justify-center">
                 {totalPages > 1 && (
                   <Pagination
-                    currentPage={safePage}
+                    currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={setCurrentPage}
                     size="sm"

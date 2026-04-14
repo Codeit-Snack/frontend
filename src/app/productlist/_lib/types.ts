@@ -1,5 +1,15 @@
 export type SortOption = "latest" | "priceAsc" | "priceDesc" | "purchaseDesc"
 
+/** GET /api/categories 행 (OpenAPI CategoryResponseDto) */
+export interface CatalogCategory {
+  id: number
+  name: string
+  parentId: number | null
+  sortOrder?: number
+  isActive?: boolean
+  createdAt?: string
+}
+
 export interface Product {
   id: number
   image: string
@@ -7,16 +17,18 @@ export interface Product {
   purchaseCount: number
   name: string
   price: number
+  categoryId?: number | null
+  productUrl?: string | null
+  imageKey?: string | null
 }
 
 export interface GetProductsParams {
   keyword?: string
-  /** 소분류 name. 소분류 선택 시 사용 */
-  category?: string
-  /** 대분류 id. 대분류만 선택 시 해당 대분류의 모든 소분류 상품 필터 */
+  /** 백엔드 `categoryId` 쿼리 (리프 카테고리 선택 시) */
   categoryId?: number
   sort?: SortOption
   page?: number
+  /** API `limit`로 전달됨 */
   pageSize?: number
 }
 
@@ -27,3 +39,13 @@ export interface GetProductsResult {
   page: number
 }
 
+export interface CreateProductInput {
+  name: string
+  price: number
+  categoryId?: number | null
+  imageKey?: string | null
+  productUrl?: string | null
+  isActive?: boolean
+}
+
+export type UpdateProductInput = Partial<CreateProductInput>

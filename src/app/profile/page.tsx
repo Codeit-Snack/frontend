@@ -1,33 +1,99 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 
+import { fetchMyOrganizationProfile } from "@/app/members/_lib/api"
 import { AuthGnb } from "@/components/auth/auth-gnb"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants"
 
 const fieldWrapperClass =
     "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
 const inputClass =
     "h-[54px] w-full rounded-[16px] text-sm md:h-[64px] md:text-[20px]"
 
+const emailLooksValid = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+
+function profilePartialFromAccessToken(): {
+    userName: string
+    email: string
+} {
+    if (typeof window === "undefined") return { userName: "", email: "" }
+    const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)?.trim()
+    if (!token) return { userName: "", email: "" }
+    try {
+        const part = token.split(".")[1]
+        if (!part) return { userName: "", email: "" }
+        const b64 = part.replace(/-/g, "+").replace(/_/g, "/")
+        const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")
+        const payload = JSON.parse(atob(padded)) as Record<string, unknown>
+        const emailRaw = payload.email ?? payload.sub
+        const email =
+            typeof emailRaw === "string" && emailLooksValid(emailRaw)
+                ? emailRaw.trim()
+                : ""
+        const userName = String(
+            payload.displayName ?? payload.name ?? payload.userName ?? "",
+        ).trim()
+        return { userName, email }
+    } catch {
+        return { userName: "", email: "" }
+    }
+}
+
 export default function ProfilePage() {
-    const [companyName, setCompanyName] = useState("코드잇 스낵")
-    const [userName, setUserName] = useState("김코드")
-    const [email, setEmail] = useState("codeit@codeit.com")
+    const [companyName, setCompanyName] = useState("")
+    const [userName, setUserName] = useState("")
+    const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("")
     const [passwordFocused, setPasswordFocused] = useState(false)
     const [submitted, setSubmitted] = useState(false)
+    const [loadError, setLoadError] = useState<string | null>(null)
+    const [profileLoading, setProfileLoading] = useState(true)
+
+    useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+            setProfileLoading(true)
+            setLoadError(null)
+            try {
+                const fromApi = await fetchMyOrganizationProfile()
+                const fromJwt = profilePartialFromAccessToken()
+                if (cancelled) return
+                setCompanyName(fromApi.companyName.trim())
+                setUserName(
+                    fromApi.userName.trim() || fromJwt.userName,
+                )
+                setEmail(fromApi.email.trim() || fromJwt.email)
+            } catch (e) {
+                if (cancelled) return
+                const fromJwt = profilePartialFromAccessToken()
+                setCompanyName("")
+                setUserName(fromJwt.userName)
+                setEmail(fromJwt.email)
+                setLoadError(
+                    e instanceof Error
+                        ? e.message
+                        : "프로필 정보를 불러오지 못했습니다.",
+                )
+            } finally {
+                if (!cancelled) setProfileLoading(false)
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     const showPasswordRequired =
         (passwordFocused || submitted) && password.trim().length === 0
     const showPasswordMismatch =
         passwordConfirm.length > 0 && password !== passwordConfirm
+
     const canSubmit =
-        companyName.trim().length > 0 &&
-        userName.trim().length > 0 &&
-        email.trim().length > 0 &&
+        !profileLoading &&
         password.trim().length > 0 &&
         passwordConfirm.trim().length > 0 &&
         password === passwordConfirm
@@ -38,8 +104,8 @@ export default function ProfilePage() {
 
         if (!canSubmit) return
 
-        // TODO: connect profile update API
-        window.alert("프로필이 변경되었습니다.")
+        // TODO: 비밀번호 변경 API 연동
+        window.alert("비밀번호가 변경되었습니다.")
     }
 
     return (
@@ -47,6 +113,18 @@ export default function ProfilePage() {
             <AuthGnb />
             <section className="mx-auto flex w-full max-w-[640px] flex-col items-start gap-6">
                 <h1 className="text_2xl_semibold black_black_500_t">내 프로필</h1>
+
+                {profileLoading ? (
+                    <p className="text_sm_medium gray_gray_500_t">정보를 불러오는 중…</p>
+                ) : null}
+                {loadError ? (
+                    <p className="text_sm_medium text-[#F97B22]" role="alert">
+                        {loadError}
+                        <span className="block text_xs_regular gray_gray_500_t mt-1">
+                            일부 항목은 로그인 토큰 기준으로만 표시될 수 있습니다.
+                        </span>
+                    </p>
+                ) : null}
 
                 <form
                     className="flex w-full flex-col items-start gap-8"
@@ -61,13 +139,14 @@ export default function ProfilePage() {
                             id="companyName"
                             name="companyName"
                             type="text"
-                            placeholder="가입된 회사명을 입력해 주세요"
+                            placeholder="—"
                             variant="outlined"
                             inputSize="md"
-                            className={inputClass}
+                            className={`${inputClass} cursor-default bg-[#F5F5F5] text-[var(--gray-gray-500)]`}
                             value={companyName}
-                            onChange={(event) => setCompanyName(event.target.value)}
-                            required
+                            readOnly
+                            tabIndex={-1}
+                            aria-readonly="true"
                         />
                     </div>
 
@@ -79,13 +158,14 @@ export default function ProfilePage() {
                             id="userName"
                             name="userName"
                             type="text"
-                            placeholder="기가입된 이름을 입력해 주세요"
+                            placeholder="—"
                             variant="outlined"
                             inputSize="md"
-                            className={inputClass}
+                            className={`${inputClass} cursor-default bg-[#F5F5F5] text-[var(--gray-gray-500)]`}
                             value={userName}
-                            onChange={(event) => setUserName(event.target.value)}
-                            required
+                            readOnly
+                            tabIndex={-1}
+                            aria-readonly="true"
                         />
                     </div>
 
@@ -97,14 +177,15 @@ export default function ProfilePage() {
                             id="email"
                             name="email"
                             type="email"
-                            placeholder="이메일을 입력해 주세요"
+                            placeholder="—"
                             variant="outlined"
                             inputSize="md"
-                            className={inputClass}
+                            className={`${inputClass} cursor-default bg-[#F5F5F5] text-[var(--gray-gray-500)]`}
                             autoComplete="email"
                             value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            required
+                            readOnly
+                            tabIndex={-1}
+                            aria-readonly="true"
                         />
                     </div>
 
@@ -128,10 +209,9 @@ export default function ProfilePage() {
                             onFocus={() => setPasswordFocused(true)}
                             onBlur={() => setPasswordFocused(false)}
                             onChange={(event) => setPassword(event.target.value)}
-                            required
                         />
                         {showPasswordRequired && (
-                            <p className="text_sm_medium text-[#F97B22]">비밀번호를 입력해주세요</p>
+                            <p className="text_sm_medium text-[#F97B22]">비밀번호를 입력해 주세요</p>
                         )}
                     </div>
 
@@ -153,7 +233,6 @@ export default function ProfilePage() {
                             autoComplete="new-password"
                             value={passwordConfirm}
                             onChange={(event) => setPasswordConfirm(event.target.value)}
-                            required
                         />
                         {showPasswordMismatch && (
                             <p className="text_sm_medium text-[#F97B22]">
@@ -166,10 +245,10 @@ export default function ProfilePage() {
                         type="submit"
                         variant="solid"
                         size="lg"
-                        disabled={!canSubmit}
+                        disabled={!canSubmit || profileLoading}
                         className="h-[54px] w-full max-w-[327px] disabled:cursor-not-allowed disabled:opacity-60 md:h-[64px] md:max-w-[640px]"
                     >
-                        변경하기
+                        비밀번호 변경
                     </Button>
                 </form>
             </section>

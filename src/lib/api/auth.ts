@@ -61,12 +61,15 @@ async function serializeLoginRequestBody(
   return `{"email":${JSON.stringify(email)},"password":${JSON.stringify(password)},"invitationToken":${JSON.stringify(invitationToken)}}`;
 }
 
+/**
+ * `POST /api/auth/signup` — 최초 기업담당자(조직 생성) 가입 전용.
+ * 초대로 가입하는 일반 회원·조직 관리자는 메일의 `/invite/accept?token=…` → `/invitations/signup` + `POST /api/invitations/signup` 플로우입니다.
+ */
 export type AdminSignupPayload = {
   email: string;
   password: string;
   displayName: string;
   organizationName: string;
-  orgType: string;
   businessNumber: string;
 };
 
@@ -218,7 +221,7 @@ export async function login(
 }
 
 /**
- * POST /api/auth/signup — 기업 담당자(관리자) 회원가입
+ * POST /api/auth/signup — 기업담당자 최초 회원가입
  */
 export async function signupAdmin(
   payload: AdminSignupPayload
@@ -237,7 +240,10 @@ export async function signupAdmin(
   const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, password }),
+    body: JSON.stringify({
+      ...payload,
+      password,
+    }),
   });
 
   if (res.status === 201) {
@@ -246,4 +252,110 @@ export async function signupAdmin(
 
   const message = await readErrorMessage(res);
   return { ok: false, message };
+}
+
+/** 초대 수락 회원가입 (`POST /api/invitations/signup`) — 본문은 `token`·`password`·`displayName`만 허용 */
+export type InvitationSignupPayload = {
+  token: string;
+  password: string;
+  /** 1~100자, 문자열 */
+  displayName: string;
+};
+
+/**
+ * POST /api/invitations/signup — 초대를 통한 일반·관리자(조직원) 가입
+ * 응답에 토큰이 있으면 로그인과 동일하게 세션에 저장합니다.
+ */
+export async function signupWithInvitation(
+  payload: InvitationSignupPayload
+): Promise<
+  { ok: true; sessionStarted: boolean } | { ok: false; message: string }
+> {
+  const token = normalizeInvitationToken(payload.token);
+  if (!token) {
+    return { ok: false, message: "유효한 초대 정보가 없습니다." };
+  }
+
+  const displayName = payload.displayName.trim();
+  if (displayName.length < 1 || displayName.length > 100) {
+    return {
+      ok: false,
+      message: "이름(표시 이름)은 1자 이상 100자 이하여야 합니다.",
+    };
+  }
+
+  let password: string;
+  try {
+    password = await encryptPasswordForTransportIfConfigured(payload.password);
+  } catch (e) {
+    const msg =
+      e instanceof Error
+        ? e.message
+        : "비밀번호 처리 중 오류가 발생했습니다.";
+    return { ok: false, message: msg };
+  }
+
+  /** 객체 리터럴 대신 고정 키만 직렬화 (email·invitationToken 등 불필요 키가 섞이지 않도록) */
+  const requestBody = `{"token":${JSON.stringify(token)},"password":${JSON.stringify(password)},"displayName":${JSON.stringify(displayName)}}`;
+
+  const signupUrl =
+    typeof window !== "undefined"
+      ? "/api/invitations/signup"
+      : `${API_BASE_URL}/api/invitations/signup`;
+
+  const res = await fetch(signupUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: requestBody,
+  });
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // ignore
+  }
+
+  if (res.ok && (res.status === 201 || res.status === 200)) {
+    if (body && typeof body === "object") {
+      const o = body as Record<string, unknown>;
+      if (o.success === false) {
+        // 본문이 실패 응답인 경우 아래 공통 오류 처리로 넘깁니다.
+      } else {
+        const data =
+          o.data && typeof o.data === "object"
+            ? (o.data as Record<string, unknown>)
+            : o;
+        const pair = extractTokensFromLoginData(data);
+        if (pair) {
+          persistAuthTokens(pair.accessToken, pair.refreshToken);
+          persistMembershipRoleFromLoginData(data, pair.accessToken);
+          return { ok: true, sessionStarted: true };
+        }
+        return { ok: true, sessionStarted: false };
+      }
+    } else {
+      return { ok: true, sessionStarted: false };
+    }
+  }
+
+  if (body && typeof body === "object") {
+    const o = body as Record<string, unknown>;
+    if (isGenericInternalFailure(res.status, o)) {
+      return { ok: false, message: SERVER_ERROR_HINT_KO };
+    }
+    if (typeof o.message === "string") return { ok: false, message: o.message };
+    if (Array.isArray(o.message)) {
+      return { ok: false, message: o.message.map(String).join(", ") };
+    }
+    if (typeof o.detail === "string") return { ok: false, message: o.detail };
+  }
+
+  return {
+    ok: false,
+    message:
+      res.status >= 500
+        ? SERVER_ERROR_HINT_KO
+        : `요청에 실패했습니다. (${res.status})`,
+  };
 }

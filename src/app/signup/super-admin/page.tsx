@@ -11,9 +11,6 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { signupAdmin } from "@/lib/api/auth"
 import { cn } from "@/lib/utils"
 
-/** Swagger 예시와 동일 — 기업(사업자) 조직 유형 */
-const ORG_TYPE_BUSINESS = "BUSINESS"
-
 const fieldWrapperClass =
   "flex min-h-[86px] w-full max-w-[327px] flex-col items-start gap-2 self-stretch md:min-h-[112px] md:max-w-[640px] md:gap-4"
 const inputClass =
@@ -82,7 +79,6 @@ export default function SuperAdminSignupPage() {
         password,
         displayName: managerName.trim(),
         organizationName: companyName.trim(),
-        orgType: ORG_TYPE_BUSINESS,
         businessNumber: businessNumber.trim(),
       })
 
@@ -110,7 +106,9 @@ export default function SuperAdminSignupPage() {
           기업담당자 회원가입
         </h1>
         <p className="text_sm_medium gray_gray_500_t">
-          그룹 내 유저는 기업담당자의 초대 메일을 통해 가입이 가능합니다.
+          그룹 내 일반 회원·관리자는 초대 메일의 링크(
+          <span className="whitespace-nowrap">/invite/accept?token=…</span>)를
+          통해 가입할 수 있습니다.
         </p>
 
         <form

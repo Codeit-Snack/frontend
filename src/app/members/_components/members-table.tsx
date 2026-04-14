@@ -46,7 +46,7 @@ export function MembersTable({
   onChangeRole,
   onDeactivate,
 }: MembersTableProps) {
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<Member["id"] | null>(null);
   const menuRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {

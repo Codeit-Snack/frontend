@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { PurchaseRequestItem } from "../_types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -27,14 +28,16 @@ export function PurchaseRequestCard({
   onCancelRequest,
   className,
 }: PurchaseRequestCardProps) {
+  const router = useRouter();
   const canCancel = item.status === "pending";
 
   return (
     <div
       className={cn(
-        "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0",
+        "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
         className,
       )}
+      onClick={() => router.push(`/purchase-request-detail?id=${item.id}`)}
     >
       {/* 상단: 상품 정보 + 요청 취소 버튼 */}
       <div className="flex items-start gap-3 mb-6">
@@ -68,7 +71,10 @@ export function PurchaseRequestCard({
             variant="outlined"
             size="etc-sm"
             className="!h-9 !min-w-0 shrink-0 self-end !rounded-lg !border-[var(--primary-orange-400,#F97B22)] !px-3 font-[Pretendard] !text-[14px] !font-semibold !leading-[20px] !text-[var(--primary-orange-400,#F97B22)]"
-            onClick={() => onCancelRequest(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onCancelRequest(item);
+            }}
           >
             요청 취소
           </Button>
