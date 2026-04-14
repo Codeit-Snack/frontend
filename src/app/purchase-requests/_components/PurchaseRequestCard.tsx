@@ -6,10 +6,13 @@ import type { PurchaseRequestItem } from "../_types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
-  pending: "승인대기",
-  rejected: "구매 반려",
-  approved: "승인 완료",
+const STATUS_LABEL: Record<PurchaseRequestItem["rawStatus"], string> = {
+  OPEN: "승인대기",
+  PARTIALLY_APPROVED: "부분 승인",
+  READY_TO_PURCHASE: "구매 준비",
+  REJECTED: "구매 반려",
+  CANCELED: "요청 취소",
+  PURCHASED: "승인 완료",
 };
 
 /** 날짜를 "2024. 07. 04" 형식으로 */
@@ -29,7 +32,7 @@ export function PurchaseRequestCard({
   className,
 }: PurchaseRequestCardProps) {
   const router = useRouter();
-  const canCancel = item.status === "pending";
+  const canCancel = item.rawStatus === "OPEN";
 
   return (
     <div
@@ -37,7 +40,7 @@ export function PurchaseRequestCard({
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
         className,
       )}
-      onClick={() => router.push("/purchase-request-detail")}
+      onClick={() => router.push(`/purchase-request-detail?id=${item.id}`)}
     >
       {/* 상단: 상품 정보 + 요청 취소 버튼 */}
       <div className="flex items-start gap-3 mb-6">
@@ -115,13 +118,17 @@ export function PurchaseRequestCard({
           <span
             className={cn(
               "font-[Pretendard] text-[14px] font-normal leading-[22px]",
-              item.status === "pending" &&
+              (item.rawStatus === "OPEN" ||
+                item.rawStatus === "PARTIALLY_APPROVED" ||
+                item.rawStatus === "READY_TO_PURCHASE") &&
                 "text-[var(--black-black-100,#6B6B6B)]",
-              (item.status === "rejected" || item.status === "approved") &&
+              (item.rawStatus === "REJECTED" ||
+                item.rawStatus === "CANCELED" ||
+                item.rawStatus === "PURCHASED") &&
                 "text-[var(--gray-gray-400,#ABABAB)]",
             )}
           >
-            {STATUS_LABEL[item.status]}
+            {STATUS_LABEL[item.rawStatus]}
           </span>
         </div>
       </div>

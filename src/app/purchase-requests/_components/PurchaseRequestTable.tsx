@@ -6,10 +6,13 @@ import type { PurchaseRequestItem } from "../_types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const STATUS_LABEL: Record<PurchaseRequestItem["status"], string> = {
-  pending: "승인 대기",
-  rejected: "구매 반려",
-  approved: "승인 완료",
+const STATUS_LABEL: Record<PurchaseRequestItem["rawStatus"], string> = {
+  OPEN: "승인 대기",
+  PARTIALLY_APPROVED: "부분 승인",
+  READY_TO_PURCHASE: "구매 준비",
+  REJECTED: "구매 반려",
+  CANCELED: "요청 취소",
+  PURCHASED: "승인 완료",
 };
 
 /** thead th 공통: Pretendard 20px medium, line-height 32px, Black-100, center */
@@ -83,12 +86,12 @@ export function PurchaseRequestTable({
         </thead>
         <tbody>
           {items.map((item) => {
-            const canCancel = item.status === "pending";
+            const canCancel = item.rawStatus === "OPEN";
             return (
               <tr
                 key={item.id}
                 className="[&>td]:border-b [&>td]:line_line_200_l last:[&>td]:border-b-0 cursor-pointer"
-                onClick={() => router.push("/purchase-request-detail")}
+                onClick={() => router.push(`/purchase-request-detail?id=${item.id}`)}
               >
                 <td className="w-28 min-w-0 pl-[80px] pr-[40px] py-6 text-center font-[Pretendard] text-[20px] font-normal leading-[32px] text-[var(--black-black-100,#6B6B6B)]">
                   {item.requestDate}
@@ -108,12 +111,17 @@ export function PurchaseRequestTable({
                   <span
                     className={cn(
                       "inline-block rounded-full px-2.5 py-0.5 text-center font-[Pretendard] text-[20px] font-normal leading-[32px]",
-                      item.status === "pending" && "text-[var(--black-black-100,#6B6B6B)]",
-                      (item.status === "rejected" || item.status === "approved") &&
+                      (item.rawStatus === "OPEN" ||
+                        item.rawStatus === "PARTIALLY_APPROVED" ||
+                        item.rawStatus === "READY_TO_PURCHASE") &&
+                        "text-[var(--black-black-100,#6B6B6B)]",
+                      (item.rawStatus === "REJECTED" ||
+                        item.rawStatus === "CANCELED" ||
+                        item.rawStatus === "PURCHASED") &&
                         "text-[var(--gray-gray-300,#C4C4C4)]"
                     )}
                   >
-                    {STATUS_LABEL[item.status]}
+                    {STATUS_LABEL[item.rawStatus]}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-6 pr-[80px] text-center">
