@@ -26,6 +26,7 @@ import {
   type SellerOrderListItem,
 } from "./_lib/seller-order-api";
 import type { PurchaseRequestDetailItem } from "./detail/_types";
+import { getBudgetSummary } from "./_lib/budget-api";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -139,6 +140,7 @@ export default function PurchaseManagePage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [remainingBudget, setRemainingBudget] = useState<number>(0);
 
   const fetchList = useCallback(async (page: number, currentSort: PurchaseRequestSort) => {
     setLoading(true);
@@ -187,9 +189,27 @@ export default function PurchaseManagePage() {
     }
   }, []);
 
+  const fetchMonthlyRemainingBudget = useCallback(async () => {
+    const now = new Date();
+    const summary = await getBudgetSummary({
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+    });
+    const parsed = Number(summary.remainingAmount);
+    setRemainingBudget(Number.isFinite(parsed) ? parsed : 0);
+  }, []);
+
   useEffect(() => {
     void fetchList(currentPage, sort);
   }, [currentPage, sort, fetchList]);
+
+  useEffect(() => {
+    fetchMonthlyRemainingBudget().catch((error) => {
+      setErrorMessage(
+        error instanceof Error ? error.message : "남은 예산을 불러오지 못했습니다."
+      );
+    });
+  }, [fetchMonthlyRemainingBudget]);
 
   const handleCancelRequest = useCallback((item: PurchaseRequestItem) => {
     setCancelTarget(item);
@@ -316,7 +336,7 @@ export default function PurchaseManagePage() {
         }}
         requesterName={approveTarget?.requester ?? ""}
         items={approveItems}
-        remainingBudget={60000}
+        remainingBudget={remainingBudget}
         onCancel={() => {}}
         onApprove={async (message) => {
           if (!approveTarget || actionLoading) return;
@@ -330,6 +350,9 @@ export default function PurchaseManagePage() {
               orderId: order.id,
               decisionMessage: message || undefined,
             });
+            setRemainingBudget((prev) => Math.max(0, prev - approveTarget.totalAmount));
+            setApproveModalOpen(false);
+            setApproveTarget(null);
             await fetchList(currentPage, sort);
           } catch (error) {
             setErrorMessage(
