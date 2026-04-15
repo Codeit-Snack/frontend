@@ -18,6 +18,7 @@ import { getBudgetSummary } from "../_lib/budget-api";
 import {
   approveSellerPurchaseOrder,
   completeSellerPurchaseOrder,
+  createExpenseFromSellerOrder,
   getSellerPurchaseOrders,
   rejectSellerPurchaseOrder,
   type SellerOrderListItem,
@@ -95,6 +96,7 @@ function PurchaseManageDetailContent() {
   const [detail, setDetail] = useState<PurchaseRequestDetailResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [approveErrorMessage, setApproveErrorMessage] = useState("");
   const [monthlySpent, setMonthlySpent] = useState<number | null>(null);
   const [monthlyRemaining, setMonthlyRemaining] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -160,6 +162,7 @@ function PurchaseManageDetailContent() {
       : null;
   const handleApprove = useCallback(async () => {
     if (!detail || !canDecision || actionLoading || isBudgetExceeded) return;
+    setApproveErrorMessage("");
     setApproveModalOpen(true);
   }, [actionLoading, canDecision, detail, isBudgetExceeded]);
 
@@ -179,15 +182,22 @@ function PurchaseManageDetailContent() {
         await completeSellerPurchaseOrder({
           orderId: order.id,
         });
+        await createExpenseFromSellerOrder({
+          orderId: order.id,
+          itemsAmount: totalPrice,
+          note: "관리자 구매 승인 처리",
+        });
         await fetchCurrentMonthBudgetSummary();
         setDetail((prev) =>
           prev == null ? prev : { ...prev, status: "PURCHASED" }
         );
         setApproveModalOpen(false);
+        setApproveErrorMessage("");
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "요청 승인 처리에 실패했습니다."
-        );
+        const message =
+          error instanceof Error ? error.message : "요청 승인 처리에 실패했습니다.";
+        setApproveErrorMessage(message);
+        setErrorMessage(message);
       } finally {
         setActionLoading(false);
       }
@@ -433,10 +443,15 @@ function PurchaseManageDetailContent() {
 
       <PurchaseApproveModal
         open={approveModalOpen}
-        onOpenChange={setApproveModalOpen}
+        onOpenChange={(open) => {
+          setApproveModalOpen(open);
+          if (!open) setApproveErrorMessage("");
+        }}
         requesterName={detail ? `사용자 #${detail.requesterUserId}` : ""}
         items={approveModalItems}
         remainingBudget={monthlyRemaining ?? 0}
+        isSubmitting={actionLoading}
+        errorMessage={approveErrorMessage}
         onCancel={() => {}}
         onApprove={(message) => {
           void handleApproveWithReason(message);

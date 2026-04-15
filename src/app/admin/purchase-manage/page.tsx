@@ -23,6 +23,7 @@ import {
 import {
   approveSellerPurchaseOrder,
   completeSellerPurchaseOrder,
+  createExpenseFromSellerOrder,
   getSellerPurchaseOrders,
   rejectSellerPurchaseOrder,
   type SellerOrderListItem,
@@ -140,6 +141,7 @@ export default function PurchaseManagePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [approveErrorMessage, setApproveErrorMessage] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [remainingBudget, setRemainingBudget] = useState<number>(0);
 
@@ -239,6 +241,7 @@ export default function PurchaseManagePage() {
 
   const handleApproveRequest = useCallback(async (item: PurchaseRequestItem) => {
     setApproveTarget(item);
+    setApproveErrorMessage("");
     setApproveItems([]);
     try {
       const detail = await getPurchaseRequestDetail(item.id);
@@ -332,16 +335,22 @@ export default function PurchaseManagePage() {
         open={approveModalOpen}
         onOpenChange={(open) => {
           setApproveModalOpen(open);
-          if (!open) setApproveTarget(null);
+          if (!open) {
+            setApproveTarget(null);
+            setApproveErrorMessage("");
+          }
         }}
         requesterName={approveTarget?.requester ?? ""}
         items={approveItems}
         remainingBudget={remainingBudget}
+        isSubmitting={actionLoading}
+        errorMessage={approveErrorMessage}
         onCancel={() => {}}
         onApprove={async (message) => {
           if (!approveTarget || actionLoading) return;
           try {
             setActionLoading(true);
+            setApproveErrorMessage("");
             const order = await findPendingSellerOrderByRequestId(approveTarget.id);
             if (!order) {
               throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
@@ -353,14 +362,21 @@ export default function PurchaseManagePage() {
             await completeSellerPurchaseOrder({
               orderId: order.id,
             });
+            await createExpenseFromSellerOrder({
+              orderId: order.id,
+              itemsAmount: approveTarget.totalAmount,
+              note: "관리자 구매 승인 처리",
+            });
             await fetchMonthlyRemainingBudget();
             setApproveModalOpen(false);
             setApproveTarget(null);
+            setApproveErrorMessage("");
             await fetchList(currentPage, sort);
           } catch (error) {
-            setErrorMessage(
-              error instanceof Error ? error.message : "요청 승인 처리에 실패했습니다."
-            );
+            const message =
+              error instanceof Error ? error.message : "요청 승인 처리에 실패했습니다.";
+            setApproveErrorMessage(message);
+            setErrorMessage(message);
           } finally {
             setActionLoading(false);
           }
