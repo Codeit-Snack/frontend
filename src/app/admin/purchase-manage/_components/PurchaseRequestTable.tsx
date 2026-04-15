@@ -10,7 +10,7 @@ const TH_STYLE =
 const STATUS_LABEL: Record<PurchaseRequestItem["rawStatus"], string> = {
   OPEN: "승인 대기",
   PARTIALLY_APPROVED: "부분 승인",
-  READY_TO_PURCHASE: "구매 준비",
+  READY_TO_PURCHASE: "구매 승인",
   REJECTED: "구매 반려",
   CANCELED: "요청 취소",
   PURCHASED: "승인 완료",

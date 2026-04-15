@@ -22,6 +22,7 @@ import {
 } from "@/app/purchase-requests/_lib/api";
 import {
   approveSellerPurchaseOrder,
+  completeSellerPurchaseOrder,
   getSellerPurchaseOrders,
   rejectSellerPurchaseOrder,
   type SellerOrderListItem,
@@ -34,7 +35,7 @@ const ITEMS_PER_PAGE = 6;
 const STATUS_MAP: Record<PurchaseRequestListItem["status"], PurchaseRequestItem["status"]> = {
   OPEN: "pending",
   PARTIALLY_APPROVED: "pending",
-  READY_TO_PURCHASE: "pending",
+  READY_TO_PURCHASE: "approved",
   REJECTED: "rejected",
   CANCELED: "rejected",
   PURCHASED: "approved",
@@ -349,7 +350,10 @@ export default function PurchaseManagePage() {
               orderId: order.id,
               decisionMessage: message || undefined,
             });
-            setRemainingBudget((prev) => Math.max(0, prev - approveTarget.totalAmount));
+            await completeSellerPurchaseOrder({
+              orderId: order.id,
+            });
+            await fetchMonthlyRemainingBudget();
             setApproveModalOpen(false);
             setApproveTarget(null);
             await fetchList(currentPage, sort);

@@ -145,3 +145,70 @@ export async function rejectSellerPurchaseOrder(params: {
   );
   return getDataPayload(payload);
 }
+
+export async function completeSellerPurchaseOrder(params: {
+  orderId: number;
+  shippingFee?: string;
+}): Promise<unknown> {
+  const defaultBody = {
+    ...(params.shippingFee ? { shippingFee: params.shippingFee } : {}),
+  };
+
+  const candidates: Array<{
+    path: string;
+    method: "POST" | "PATCH";
+    body: Record<string, unknown>;
+  }> = [
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/purchase`,
+      method: "POST",
+      body: defaultBody,
+    },
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/purchase`,
+      method: "PATCH",
+      body: defaultBody,
+    },
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/purchased`,
+      method: "POST",
+      body: defaultBody,
+    },
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/complete`,
+      method: "POST",
+      body: defaultBody,
+    },
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/completed`,
+      method: "POST",
+      body: defaultBody,
+    },
+    {
+      path: `/api/seller/purchase-orders/${params.orderId}/status`,
+      method: "PATCH",
+      body: {
+        status: "PURCHASED",
+        ...defaultBody,
+      },
+    },
+  ];
+
+  let lastError: Error | null = null;
+  for (const candidate of candidates) {
+    try {
+      const payload = await requestApi<unknown>(candidate.path, {
+        method: candidate.method,
+        body: JSON.stringify(candidate.body),
+      });
+      return getDataPayload(payload);
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error("구매 완료 처리 API 요청에 실패했습니다.");
+    }
+  }
+
+  throw lastError ?? new Error("구매 완료 처리 API를 찾을 수 없습니다.");
+}

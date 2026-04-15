@@ -19,7 +19,7 @@ const DEFAULT_IMAGE = "/assets/purchase_request_details/cola.png";
 const STATUS_LABEL: Record<PurchaseRequestDetailResult["status"], string> = {
   OPEN: "승인 대기",
   PARTIALLY_APPROVED: "부분 승인",
-  READY_TO_PURCHASE: "구매 준비",
+  READY_TO_PURCHASE: "승인 완료",
   REJECTED: "구매 반려",
   CANCELED: "요청 취소",
   PURCHASED: "구매 완료",
