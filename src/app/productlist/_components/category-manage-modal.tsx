@@ -34,6 +34,8 @@ interface CategoryManageModalProps {
   onOpenChange: (open: boolean) => void
   catalogRows: CatalogCategory[]
   onSuccess?: () => void
+  /** 다른 다이얼로그 위에 겹칠 때(예: 상품 등록 모달 안) 오버레이·패널 z-index 상향 */
+  nested?: boolean
 }
 
 function sameParentGroup(
@@ -76,6 +78,7 @@ export function CategoryManageModal({
   onOpenChange,
   catalogRows,
   onSuccess,
+  nested = false,
 }: CategoryManageModalProps) {
   const [level, setLevel] = useState<Level>("main")
   const [parentMainId, setParentMainId] = useState<number | null>(null)
@@ -325,7 +328,13 @@ export function CategoryManageModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,90vh)] w-full max-w-[560px] overflow-y-auto p-6 lg:p-8">
+      <DialogContent
+        overlayClassName={nested ? "z-[100]" : undefined}
+        className={cn(
+          "max-h-[min(90dvh,90vh)] w-full max-w-[560px] overflow-y-auto p-6 lg:p-8",
+          nested && "z-[101]",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>카테고리 관리</DialogTitle>
         </DialogHeader>
