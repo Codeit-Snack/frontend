@@ -2,7 +2,7 @@
 
 import { ProductRegisterHeader } from "./_components/product-register-header";
 import { ProductRegisterTable } from "./_components/product-register-table";
-import { Header } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import Pagination from "@/components/ui/pagination";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -29,11 +29,10 @@ export default function ProductRegisterHistoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header
+      <HeaderWithCart
         device={isMobile ? "mobile" : "pc"}
         isLoggedIn={isLoggedIn}
         role={role}
-        cartCount={2}
       />
       <main className="flex-1 bg-[#FBF8F4] pb-10 pt-6">
         <div className="px-6">

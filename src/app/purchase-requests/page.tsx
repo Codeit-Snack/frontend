@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
@@ -152,11 +153,10 @@ export default function PurchaseRequestsPage() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header
+      <HeaderWithCart
         device={device}
         isLoggedIn={isLoggedIn}
         role={role}
-        cartCount={2}
       />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
