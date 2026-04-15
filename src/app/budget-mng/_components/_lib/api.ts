@@ -293,8 +293,11 @@ function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse
 function normalizeBudgetPeriod(data: unknown): GetBudgetPeriodResponse {
   const o = unwrapDataObject(data)
   if (!o) {
-    return { budgetAmount: 0 }
+    return { budgetAmount: 0, hasPeriodConfigured: false }
   }
+  const configured =
+    o.hasPeriodConfigured === true || o.has_period_configured === true
+
   const camel = o.budgetAmount
   const snake = o.budget_amount
   const raw =
@@ -304,7 +307,7 @@ function normalizeBudgetPeriod(data: unknown): GetBudgetPeriodResponse {
         : snake
       : camel
   if (raw === null || raw === undefined) {
-    return { budgetAmount: 0 }
+    return { budgetAmount: 0, hasPeriodConfigured: configured }
   }
   const n =
     typeof raw === "number"
@@ -312,8 +315,10 @@ function normalizeBudgetPeriod(data: unknown): GetBudgetPeriodResponse {
       : typeof raw === "string"
         ? Number(raw)
         : NaN
+  const parsed = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
   return {
-    budgetAmount: Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0,
+    budgetAmount: configured ? parsed : 0,
+    hasPeriodConfigured: configured,
   }
 }
 
