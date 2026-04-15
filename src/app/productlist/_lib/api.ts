@@ -2,11 +2,13 @@ import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants"
 import { API_BASE_URL } from "@/lib/env"
 import type {
   CatalogCategory,
+  CreateCategoryInput,
   CreateProductInput,
   GetProductsParams,
   GetProductsResult,
   Product,
   SortOption,
+  UpdateCategoryInput,
   UpdateProductInput,
 } from "./types"
 
@@ -237,6 +239,29 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T
 }
 
+function parseCatalogCategoryRow(row: unknown): CatalogCategory | null {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return null
+  const o = row as Record<string, unknown>
+  const id = Number(o.id)
+  if (!Number.isFinite(id)) return null
+  const parentRaw = o.parentId
+  const parentId =
+    parentRaw === null || parentRaw === undefined
+      ? null
+      : Number(parentRaw)
+  return {
+    id,
+    name: String(o.name ?? ""),
+    parentId:
+      parentId !== null && Number.isFinite(parentId) ? parentId : null,
+    sortOrder: Number.isFinite(Number(o.sortOrder))
+      ? Number(o.sortOrder)
+      : undefined,
+    isActive: typeof o.isActive === "boolean" ? o.isActive : undefined,
+    createdAt: typeof o.createdAt === "string" ? o.createdAt : undefined,
+  }
+}
+
 function sortProductsClient(products: Product[], sort: SortOption) {
   const copied = [...products]
   switch (sort) {
@@ -258,29 +283,104 @@ export async function getCategories(): Promise<CatalogCategory[]> {
   const data = getDataPayload(payload)
   if (!Array.isArray(data)) return []
   return data
-    .map((row): CatalogCategory | null => {
-      if (!row || typeof row !== "object") return null
-      const o = row as Record<string, unknown>
-      const id = Number(o.id)
-      if (!Number.isFinite(id)) return null
-      const parentRaw = o.parentId
-      const parentId =
-        parentRaw === null || parentRaw === undefined
-          ? null
-          : Number(parentRaw)
-      return {
-        id,
-        name: String(o.name ?? ""),
-        parentId:
-          parentId !== null && Number.isFinite(parentId) ? parentId : null,
-        sortOrder: Number.isFinite(Number(o.sortOrder))
-          ? Number(o.sortOrder)
-          : undefined,
-        isActive: typeof o.isActive === "boolean" ? o.isActive : undefined,
-        createdAt: typeof o.createdAt === "string" ? o.createdAt : undefined,
-      }
-    })
+    .map((row) => parseCatalogCategoryRow(row))
     .filter((c): c is CatalogCategory => c !== null)
+}
+
+export async function createCategory(
+  input: CreateCategoryInput,
+): Promise<CatalogCategory> {
+  const name = input.name.trim()
+  if (!name) {
+    throw new Error("카테고리 이름을 입력해주세요.")
+  }
+
+  const body: Record<string, unknown> = { name }
+  if (input.parentId != null && Number.isFinite(input.parentId)) {
+    body.parentId = input.parentId
+  }
+  if (
+    input.sortOrder != null &&
+    Number.isFinite(input.sortOrder) &&
+    input.sortOrder >= 0
+  ) {
+    body.sortOrder = Math.floor(input.sortOrder)
+  }
+  if (typeof input.isActive === "boolean") {
+    body.isActive = input.isActive
+  }
+
+  const payload = await requestApi<unknown>("/api/categories", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+  const data = getDataPayload(payload)
+  const record =
+    data && typeof data === "object" && !Array.isArray(data) ? data : payload
+  const cat = parseCatalogCategoryRow(record)
+  if (!cat) {
+    throw new Error("카테고리 응답을 해석할 수 없습니다.")
+  }
+  return cat
+}
+
+export async function updateCategory(
+  categoryId: number,
+  input: UpdateCategoryInput,
+): Promise<CatalogCategory> {
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    throw new Error("유효하지 않은 카테고리입니다.")
+  }
+
+  const body: Record<string, unknown> = {}
+  if (input.name !== undefined) {
+    body.name = input.name.trim()
+  }
+  if (input.parentId !== undefined) {
+    body.parentId = input.parentId
+  }
+  if (
+    input.sortOrder !== undefined &&
+    Number.isFinite(input.sortOrder) &&
+    input.sortOrder >= 0
+  ) {
+    body.sortOrder = Math.floor(input.sortOrder)
+  }
+  if (typeof input.isActive === "boolean") {
+    body.isActive = input.isActive
+  }
+
+  if (Object.keys(body).length === 0) {
+    throw new Error("변경할 내용이 없습니다.")
+  }
+
+  const payload = await requestApi<unknown>(`/api/categories/${categoryId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  })
+  const data = getDataPayload(payload)
+  const record =
+    data && typeof data === "object" && !Array.isArray(data) ? data : payload
+  const cat = parseCatalogCategoryRow(record)
+  if (!cat) {
+    throw new Error("카테고리 응답을 해석할 수 없습니다.")
+  }
+  return cat
+}
+
+export async function deleteCategory(categoryId: number): Promise<void> {
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    throw new Error("유효하지 않은 카테고리입니다.")
+  }
+  const { response, json } = await apiFetch(`/api/categories/${categoryId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      parseErrorMessage(json, "삭제에 실패했습니다."),
+    )
+  }
 }
 
 export async function getProducts(

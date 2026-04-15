@@ -3,6 +3,13 @@ export type PurchaseRequestSort = "latest" | "amountAsc" | "amountDesc";
 
 /** 상태: 승인 대기 | 구매 반려 | 승인 완료 */
 export type PurchaseRequestStatus = "pending" | "rejected" | "approved";
+export type PurchaseRequestRawStatus =
+  | "OPEN"
+  | "PARTIALLY_APPROVED"
+  | "READY_TO_PURCHASE"
+  | "REJECTED"
+  | "CANCELED"
+  | "PURCHASED";
 
 export interface PurchaseRequestItem {
   id: number;
@@ -11,5 +18,6 @@ export interface PurchaseRequestItem {
   totalQuantity: number;
   totalAmount: number;
   status: PurchaseRequestStatus;
+  rawStatus: PurchaseRequestRawStatus;
   imageUrl?: string; // 썸네일
 }
