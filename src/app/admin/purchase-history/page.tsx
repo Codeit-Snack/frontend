@@ -14,9 +14,11 @@ import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
 import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
 import { API_BASE_URL } from "@/lib/env";
 import { cn } from "@/lib/utils";
+import { getBudgetSummary } from "@/app/admin/purchase-manage/_lib/budget-api";
+import { fetchMonthlyExpensesTotal } from "@/app/budget-mng/_components/_lib/api";
 
 const ITEMS_PER_PAGE = 6;
-const SUMMARY_CARDS = [
+const SUMMARY_CARDS_BASE = [
   {
     title: "이번 달 지출액",
     subText: "데이터 연동 예정",
@@ -36,6 +38,19 @@ const SUMMARY_CARDS = [
     gridClassName: "col-span-2 xl:col-span-3",
   },
 ];
+
+function formatWon(value: number) {
+  return `${value.toLocaleString("ko-KR")}원`;
+}
+
+/** 현재 달(1–12) 기준 직전 달의 연·월 */
+function getPreviousCalendarMonth(year: number, month: number): {
+  year: number;
+  month: number;
+} {
+  const d = new Date(year, month - 2, 1);
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
 
 function formatDate(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "-";
@@ -165,6 +180,125 @@ export default function PurchaseHistoryPage() {
   const [cancelTarget, setCancelTarget] = useState<PurchaseRequestItem | null>(null);
   const [items, setItems] = useState<PurchaseRequestItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [monthlyExpenseAmount, setMonthlyExpenseAmount] = useState<number | null>(null);
+  const [monthlyExpenseError, setMonthlyExpenseError] = useState<string | null>(null);
+  const [monthlyExpenseReady, setMonthlyExpenseReady] = useState(false);
+  const [monthlyBudgetCap, setMonthlyBudgetCap] = useState<number | null>(null);
+  const [budgetSummaryError, setBudgetSummaryError] = useState<string | null>(null);
+  const [summaryFinanceReady, setSummaryFinanceReady] = useState(false);
+  const [lastMonthRemaining, setLastMonthRemaining] = useState<number | null>(null);
+  const [lastMonthExpenseAmount, setLastMonthExpenseAmount] = useState<number | null>(null);
+  const [ytdExpenseThisYear, setYtdExpenseThisYear] = useState<number | null>(null);
+  const [ytdExpenseLastYear, setYtdExpenseLastYear] = useState<number | null>(null);
+  const [yearExpenseReady, setYearExpenseReady] = useState(false);
+  const [yearExpenseError, setYearExpenseError] = useState<string | null>(null);
+
+  const remainingBudgetAmount = useMemo(() => {
+    if (monthlyBudgetCap === null || monthlyExpenseAmount === null) return null;
+    return monthlyBudgetCap - monthlyExpenseAmount;
+  }, [monthlyBudgetCap, monthlyExpenseAmount]);
+
+  const remainingVsLastMonthSubText = useMemo(() => {
+    if (!summaryFinanceReady || remainingBudgetAmount === null) return null;
+    if (lastMonthRemaining === null) {
+      return "지난 달과 비교할 수 없어요";
+    }
+    const diff = remainingBudgetAmount - lastMonthRemaining;
+    if (diff === 0) {
+      return "지난 달과 남은 예산이 같아요";
+    }
+    if (diff > 0) {
+      return `지난 달보다 ${formatWon(diff)} 더 많아요`;
+    }
+    return `지난 달보다 ${formatWon(Math.abs(diff))} 덜 남았어요`;
+  }, [summaryFinanceReady, remainingBudgetAmount, lastMonthRemaining]);
+
+  const ytdVsLastYearSubText = useMemo(() => {
+    if (!yearExpenseReady) return null;
+    if (ytdExpenseThisYear === null || ytdExpenseLastYear === null) {
+      return "지난 해와 비교할 수 없어요";
+    }
+    const diff = ytdExpenseThisYear - ytdExpenseLastYear;
+    if (diff === 0) {
+      return "지난 해와 지출이 같아요";
+    }
+    if (diff > 0) {
+      return `지난 해보다 ${formatWon(diff)} 더 지출했어요`;
+    }
+    return `지난 해보다 ${formatWon(Math.abs(diff))} 덜 지출했어요`;
+  }, [yearExpenseReady, ytdExpenseThisYear, ytdExpenseLastYear]);
+
+  const summaryCards = useMemo(() => {
+    const cards = SUMMARY_CARDS_BASE.map((c) => ({ ...c }));
+    const spent = cards[0];
+    if (spent) {
+      if (!monthlyExpenseReady) {
+        spent.subText = "불러오는 중…";
+        spent.amount = "-";
+      } else if (monthlyExpenseError) {
+        spent.subText = monthlyExpenseError;
+        spent.amount = "-";
+      } else if (monthlyExpenseAmount !== null) {
+        spent.subText =
+          lastMonthExpenseAmount !== null
+            ? `지난 달 : ${formatWon(lastMonthExpenseAmount)}`
+            : `지난 달 : ${formatWon(0)}`;
+        spent.amount = formatWon(monthlyExpenseAmount);
+      } else {
+        spent.subText = "해당 월 지출 정보 없음";
+        spent.amount = "-";
+      }
+    }
+    const rb = cards[1];
+    if (rb) {
+      if (!summaryFinanceReady) {
+        rb.subText = "불러오는 중…";
+        rb.amount = "-";
+      } else if (budgetSummaryError || monthlyExpenseError) {
+        rb.subText =
+          budgetSummaryError ??
+          monthlyExpenseError ??
+          "예산·지출 정보를 불러오지 못했습니다.";
+        rb.amount = "-";
+      } else if (remainingBudgetAmount !== null) {
+        rb.subText = remainingVsLastMonthSubText ?? "지난 달과 비교할 수 없어요";
+        rb.amount = formatWon(remainingBudgetAmount);
+      } else {
+        rb.subText = "예산 또는 지출을 확인할 수 없어 계산할 수 없습니다.";
+        rb.amount = "-";
+      }
+    }
+    const ytd = cards[2];
+    if (ytd) {
+      if (!yearExpenseReady) {
+        ytd.subText = "불러오는 중…";
+        ytd.amount = "-";
+      } else if (yearExpenseError) {
+        ytd.subText = yearExpenseError;
+        ytd.amount = "-";
+      } else if (ytdExpenseThisYear !== null) {
+        ytd.subText = ytdVsLastYearSubText ?? "지난 해와 비교할 수 없어요";
+        ytd.amount = formatWon(ytdExpenseThisYear);
+      } else {
+        ytd.subText = "올해 지출 합계를 계산할 수 없어요";
+        ytd.amount = "-";
+      }
+    }
+    return cards;
+  }, [
+    monthlyExpenseAmount,
+    monthlyExpenseError,
+    monthlyExpenseReady,
+    budgetSummaryError,
+    summaryFinanceReady,
+    remainingBudgetAmount,
+    remainingVsLastMonthSubText,
+    lastMonthExpenseAmount,
+    yearExpenseReady,
+    yearExpenseError,
+    ytdExpenseThisYear,
+    ytdVsLastYearSubText,
+  ]);
 
   const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
   const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
@@ -215,6 +349,136 @@ export default function PurchaseHistoryPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      setMonthlyExpenseReady(false);
+      setSummaryFinanceReady(false);
+      setBudgetSummaryError(null);
+      setMonthlyExpenseError(null);
+      setLastMonthRemaining(null);
+      setLastMonthExpenseAmount(null);
+
+      const prev = getPreviousCalendarMonth(year, month);
+
+      const [budgetOutcome, expenseOutcome, budgetLastOutcome, expenseLastOutcome] =
+        await Promise.allSettled([
+          getBudgetSummary({ year, month }),
+          fetchMonthlyExpensesTotal({ year, month }),
+          getBudgetSummary(prev),
+          fetchMonthlyExpensesTotal(prev),
+        ]);
+
+      if (cancelled) return;
+
+      if (budgetOutcome.status === "fulfilled") {
+        const cap = Number(budgetOutcome.value.budgetAmount);
+        setMonthlyBudgetCap(Number.isFinite(cap) ? cap : null);
+        setBudgetSummaryError(null);
+      } else {
+        setMonthlyBudgetCap(null);
+        const reason = budgetOutcome.reason;
+        setBudgetSummaryError(
+          reason instanceof Error
+            ? reason.message
+            : "이번 달 예산 정보를 불러오지 못했습니다."
+        );
+      }
+
+      if (expenseOutcome.status === "fulfilled") {
+        setMonthlyExpenseAmount(expenseOutcome.value);
+        setMonthlyExpenseError(null);
+      } else {
+        setMonthlyExpenseAmount(null);
+        const reason = expenseOutcome.reason;
+        setMonthlyExpenseError(
+          reason instanceof Error
+            ? reason.message
+            : "이번 달 지출을 불러오지 못했습니다."
+        );
+      }
+
+      if (expenseLastOutcome.status === "fulfilled") {
+        setLastMonthExpenseAmount(expenseLastOutcome.value);
+      } else {
+        setLastMonthExpenseAmount(null);
+      }
+
+      let remLast: number | null = null;
+      if (
+        budgetLastOutcome.status === "fulfilled" &&
+        expenseLastOutcome.status === "fulfilled"
+      ) {
+        const capLast = Number(budgetLastOutcome.value.budgetAmount);
+        const expLast = expenseLastOutcome.value;
+        if (Number.isFinite(capLast) && expLast !== null) {
+          remLast = capLast - expLast;
+        }
+      }
+      setLastMonthRemaining(remLast);
+
+      setMonthlyExpenseReady(true);
+      setSummaryFinanceReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** 올해 1월~당월 지출 합계 + 작년 동기간 합(비교용) */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const months = Array.from({ length: currentMonth }, (_, i) => i + 1);
+
+      setYearExpenseReady(false);
+      setYearExpenseError(null);
+      setYtdExpenseThisYear(null);
+      setYtdExpenseLastYear(null);
+
+      try {
+        const [thisYearParts, lastYearParts] = await Promise.all([
+          Promise.all(
+            months.map((m) =>
+              fetchMonthlyExpensesTotal({ year: y, month: m }).catch(() => null)
+            )
+          ),
+          Promise.all(
+            months.map((m) =>
+              fetchMonthlyExpensesTotal({ year: y - 1, month: m }).catch(() => null)
+            )
+          ),
+        ]);
+        if (cancelled) return;
+        const sumThis = thisYearParts.reduce<number>((acc, v) => acc + (v ?? 0), 0);
+        const sumLast = lastYearParts.reduce<number>((acc, v) => acc + (v ?? 0), 0);
+        setYtdExpenseThisYear(sumThis);
+        setYtdExpenseLastYear(sumLast);
+        setYearExpenseError(null);
+      } catch (e) {
+        if (!cancelled) {
+          setYtdExpenseThisYear(null);
+          setYtdExpenseLastYear(null);
+          setYearExpenseError(
+            e instanceof Error ? e.message : "올해 지출 합계를 불러오지 못했습니다."
+          );
+        }
+      } finally {
+        if (!cancelled) setYearExpenseReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen background_background_400_b">
       <Header device={device} isLoggedIn={isLoggedIn} role={role} cartCount={2} />
@@ -226,7 +490,7 @@ export default function PurchaseHistoryPage() {
           </h1>
 
           <div className="mt-6 grid grid-cols-2 gap-3 md:mt-10 xl:grid-cols-12">
-            {SUMMARY_CARDS.map((card) => (
+            {summaryCards.map((card) => (
               <article
                 key={card.title}
                 className={cn(
