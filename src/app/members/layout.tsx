@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Header } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { cn } from "@/lib/utils";
 
@@ -32,10 +32,10 @@ export default function MembersLayout({
   return (
     <>
       <div className="hidden min-[745px]:block">
-        <Header device="pc" isLoggedIn={isLoggedIn} role={role} />
+        <HeaderWithCart device="pc" isLoggedIn={isLoggedIn} role={role} />
       </div>
       <div className="min-[745px]:hidden">
-        <Header device="mobile" isLoggedIn={isLoggedIn} role={role} />
+        <HeaderWithCart device="mobile" isLoggedIn={isLoggedIn} role={role} />
       </div>
 
       <nav className="h-16 border-b border-[var(--line-line-200)] bg-[var(--background-background-400)] px-4 min-[745px]:px-[clamp(24px,6.25vw,120px)]">

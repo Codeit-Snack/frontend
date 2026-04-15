@@ -54,6 +54,15 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
     }
   }, [productId])
 
+  const refreshCategories = useCallback(async () => {
+    try {
+      const rows = await getCategories()
+      setCatalogRows(rows)
+    } catch {
+      setCatalogRows([])
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -225,6 +234,7 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
         mode="edit"
         initialProduct={product}
         onSuccess={() => void reloadProduct()}
+        onCategoriesRefresh={() => void refreshCategories()}
       />
     </div>
   )

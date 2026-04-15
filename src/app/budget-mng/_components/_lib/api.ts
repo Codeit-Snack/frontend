@@ -3,6 +3,7 @@ import {
   AUTH_REFRESH_TOKEN_KEY,
 } from "@/lib/auth/constants"
 import type {
+  GetBudgetPeriodResponse,
   GetMonthlyBudgetDefaultResponse,
   PatchMonthlyBudgetDefaultBody,
   PostBudgetPeriodBody,
@@ -229,6 +230,22 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
 
+  // 429 Too Many Requests — 응답 본문을 소비한 뒤 Retry-After·지수 백오프로 재시도
+  let rateLimitAttempt = 0
+  const maxRateLimitAttempts = 4
+  while (response.status === 429 && rateLimitAttempt < maxRateLimitAttempts) {
+    rateLimitAttempt++
+    await response.text()
+    const ra = response.headers.get("retry-after")
+    let waitMs = Math.min(1500 * 2 ** (rateLimitAttempt - 1), 20_000)
+    if (ra) {
+      const sec = Number.parseInt(ra, 10)
+      if (Number.isFinite(sec)) waitMs = Math.min(sec * 1000, 30_000)
+    }
+    await new Promise((r) => setTimeout(r, waitMs))
+    response = await doFetch()
+  }
+
   const text = await response.text()
   let json: unknown = null
   if (text) {
@@ -254,10 +271,12 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
             Object.keys(json as object).length === 0
           ? "(빈 JSON 객체 — raw는 bodyPreview 참고)"
           : json
-    console.error(
-      `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`,
-      { bodyPreview, parsed: parsedForLog },
-    )
+    const logLine = `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`
+    if (response.status === 429) {
+      console.warn(logLine, { bodyPreview, parsed: parsedForLog })
+    } else {
+      console.error(logLine, { bodyPreview, parsed: parsedForLog })
+    }
     if (response.status === 401) {
       throw new Error(
         parseErrorMessage(
@@ -280,10 +299,8 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T
 }
 
-function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse {
-  if (typeof data !== "object" || data === null) {
-    return { defaultMonthlyBudget: 0 }
-  }
+function unwrapDataObject(data: unknown): Record<string, unknown> | null {
+  if (typeof data !== "object" || data === null) return null
   const root = data as Record<string, unknown>
   const inner =
     root.data !== undefined &&
@@ -292,7 +309,14 @@ function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse
     !Array.isArray(root.data)
       ? (root.data as Record<string, unknown>)
       : root
-  const o = inner
+  return inner
+}
+
+function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse {
+  const o = unwrapDataObject(data)
+  if (!o) {
+    return { defaultMonthlyBudget: 0 }
+  }
   const camel = o.defaultMonthlyBudget
   const snake = o.default_monthly_budget
   const n =
@@ -310,10 +334,60 @@ function normalizeMonthlyDefault(data: unknown): GetMonthlyBudgetDefaultResponse
   }
 }
 
-/** GET /api/budget/monthly-default */
+function normalizeBudgetPeriod(data: unknown): GetBudgetPeriodResponse {
+  const o = unwrapDataObject(data)
+  if (!o) {
+    return { budgetAmount: 0, hasPeriodConfigured: false }
+  }
+  const configured =
+    o.hasPeriodConfigured === true || o.has_period_configured === true
+
+  const camel = o.budgetAmount
+  const snake = o.budget_amount
+  const raw =
+    camel === null || camel === undefined
+      ? snake === null || snake === undefined
+        ? null
+        : snake
+      : camel
+  if (raw === null || raw === undefined) {
+    return { budgetAmount: 0, hasPeriodConfigured: configured }
+  }
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? Number(raw)
+        : NaN
+  const parsed = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
+  return {
+    budgetAmount: configured ? parsed : 0,
+    hasPeriodConfigured: configured,
+  }
+}
+
+/** GET /api/budget/monthly-default — 조직 "매달 시작 예산" 기본값(관리자). null/누락 시 0. */
 export async function getMonthlyBudgetDefault(): Promise<GetMonthlyBudgetDefaultResponse> {
   const payload = await requestApi<unknown>("/api/budget/monthly-default")
   return normalizeMonthlyDefault(payload)
+}
+
+/**
+ * GET /api/budget/periods?year=&month= — 해당 연·월 예산액(멤버 가능).
+ * 백엔드 `GET /budget/monthly-default`는 연·월을 받지 않으므로, 월별 금액은 이 API로 조회합니다.
+ */
+export async function getBudgetPeriod(
+  year: number,
+  month: number,
+): Promise<GetBudgetPeriodResponse> {
+  const q = new URLSearchParams({
+    year: String(year),
+    month: String(month),
+  })
+  const payload = await requestApi<unknown>(
+    `/api/budget/periods?${q.toString()}`,
+  )
+  return normalizeBudgetPeriod(payload)
 }
 
 /** PATCH /api/budget/monthly-default */
@@ -572,11 +646,16 @@ export async function fetchMonthlyExpensesTotal(params: {
     } catch (e) {
       lastErr = e instanceof Error ? e : new Error(String(e))
       const msg = lastErr.message
+      // 429는 같은 API를 연속으로 두드리면 악화되므로 대체 쿼리로 넘어가지 않음
+      if (/\(429\)/.test(msg)) throw lastErr
       const canTryAlternate =
         /\((400|404)\)/.test(msg) ||
         /Bad Request/i.test(msg) ||
         /not found/i.test(msg)
-      if (canTryAlternate && i < paths.length - 1) continue
+      if (canTryAlternate && i < paths.length - 1) {
+        await new Promise((r) => setTimeout(r, 400))
+        continue
+      }
       throw lastErr
     }
   }

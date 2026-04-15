@@ -12,6 +12,7 @@ interface CartSummaryProps {
   totalPrice: number;
   totalCount: number;
   requestItems: RequestItem[];
+  requesterName: string;
   onComplete: (message: string) => void;
 }
 
@@ -22,6 +23,7 @@ export default function CartSummary({
   totalPrice,
   totalCount,
   requestItems,
+  requesterName,
   onComplete,
 }: CartSummaryProps) {
   const router = useRouter();
@@ -53,7 +55,7 @@ export default function CartSummary({
       {/* 버튼들 */}
       <div className="flex flex-col gap-3">
         <ItemRequestModal
-          requesterName="김스낵"
+          requesterName={requesterName}
           items={requestItems}
           totalCount={totalCount}
           totalPrice={totalPrice}

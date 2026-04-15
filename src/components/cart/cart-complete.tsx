@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { Button } from "@/components/ui/button";
 import type { RequestItem } from "@/components/ui/dialog";
 import Image from "next/image";
@@ -33,7 +33,7 @@ export default function CartComplete({
 
   return (
     <div className="min-h-screen bg-[#FBF8F4]">
-      <Header device={device} isLoggedIn={isLoggedIn} role={role} />
+      <HeaderWithCart device={device} isLoggedIn={isLoggedIn} role={role} />
 
       {/* 상단 완료 텍스트 */}
       <div className="flex flex-col items-center justify-center gap-2 py-10 px-6 md:px-[120px]">

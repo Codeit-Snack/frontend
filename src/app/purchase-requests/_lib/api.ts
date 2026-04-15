@@ -42,6 +42,9 @@ export interface PurchaseRequestDetailResult extends PurchaseRequestListItem {
   requesterUserId: number;
   requestMessage: string | null;
   updatedAt: string;
+  decisionMessage?: string | null;
+  approverName?: string | null;
+  decisionAt?: string | null;
   items: PurchaseRequestDetailItem[];
 }
 

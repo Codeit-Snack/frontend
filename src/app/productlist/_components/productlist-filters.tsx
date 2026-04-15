@@ -2,6 +2,7 @@
 
 import type { Category, SubCategory } from "@/types/category"
 import { cn } from "@/lib/utils"
+import { PRODUCT_LIST_MAIN_PADDING_X } from "../_lib/layout"
 
 interface ProductListFiltersProps {
   categories: Category[]
@@ -11,6 +12,18 @@ interface ProductListFiltersProps {
   onSelectCategory: (categoryId: number | null) => void
   onSelectSubCategory: (subCategoryId: number | null) => void
 }
+
+/** 본문(`page`의 패딩 + `max-w-[1680px]`)과 동일: 패딩은 바깥, 안쪽은 1680만 — 이중 들여쓰기 제거 */
+const barRowPadClass = PRODUCT_LIST_MAIN_PADDING_X
+
+const barTrackClass =
+  "mx-auto flex h-16 w-full max-w-[1680px] items-center justify-start gap-3 overflow-x-auto"
+
+const tabBtnClass =
+  "relative shrink-0 px-4 py-[14px] font-[Pretendard] text-[18px] leading-[26px] transition-colors"
+
+const chipBtnClass =
+  "shrink-0 rounded-full px-4 py-[14px] font-[Pretendard] text-[16px] leading-[26px] transition-all"
 
 export function ProductListFilters({
   categories,
@@ -22,77 +35,93 @@ export function ProductListFilters({
 }: ProductListFiltersProps) {
   const isAllSelected = selectedCategoryId === null
 
-return (
-    <section className="mt-8 flex flex-col gap-6">
-      {/* 1행: 대분류 */}
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-gray-100 pb-2">
-        <button
-          onClick={() => onSelectCategory(null)}
-          className={cn(
-            "relative pb-2 text-base font-medium transition-colors lg:text-lg",
-            isAllSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
-          )}
-        >
-          전체
-          {isAllSelected && (
-            <span className="absolute bottom-0 left-0 h-0.5 w-full bg-orange-500" />
-          )}
-        </button>
-
-        {categories.map((c) => {
-          const isSelected = selectedCategoryId === c.id
-          return (
+  return (
+    <section className="w-full divide-y divide-gray-200 border-b border-gray-200 bg-[#FBF8F4]">
+      {/* 대분류 */}
+      <div>
+        <div className={barRowPadClass}>
+          <div className={barTrackClass}>
             <button
-              key={c.id}
-              onClick={() => onSelectCategory(c.id)}
+              type="button"
+              onClick={() => onSelectCategory(null)}
               className={cn(
-                "relative pb-2 text-base font-medium transition-colors lg:text-lg",
-                isSelected ? "text-orange-500" : "text-gray-500 hover:text-gray-700"
+                tabBtnClass,
+                isAllSelected
+                  ? "font-bold text-orange-500"
+                  : "font-medium text-[var(--gray-gray-400,#ABABAB)] hover:text-gray-600",
               )}
             >
-              {c.name}
-              {isSelected && (
-                <span className="absolute bottom-0 left-0 h-0.5 w-full bg-orange-500" />
-              )}
+              전체
+              {isAllSelected ? (
+                <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-orange-500" />
+              ) : null}
             </button>
-          )
-        })}
+
+            {categories.map((c) => {
+              const isSelected = selectedCategoryId === c.id
+              return (
+                <button
+                  type="button"
+                  key={c.id}
+                  onClick={() => onSelectCategory(c.id)}
+                  className={cn(
+                    tabBtnClass,
+                    isSelected
+                      ? "font-bold text-orange-500"
+                      : "font-medium text-[var(--gray-gray-400,#ABABAB)] hover:text-gray-600",
+                  )}
+                >
+                  {c.name}
+                  {isSelected ? (
+                    <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-orange-500" />
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* 2행: 소분류 */}
-      {selectedCategoryId !== null && subCategories.length > 0 && (
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <button
-            onClick={() => onSelectSubCategory(null)}
-            className={cn(
-              "rounded-full px-4 py-1 text-xs transition-all lg:text-sm",
-              selectedSubCategoryId === null
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-gray-500 hover:bg-gray-50"
-            )}
-          >
-            전체보기
-          </button>
-
-          {subCategories.map((s) => {
-            const isSelected = selectedSubCategoryId === s.id
-            return (
+      {/* 소분류 */}
+      {selectedCategoryId !== null && subCategories.length > 0 ? (
+        <div>
+          <div className={barRowPadClass}>
+            <div className={barTrackClass}>
               <button
-                key={s.id}
-                onClick={() => onSelectSubCategory(s.id)}
+                type="button"
+                onClick={() => onSelectSubCategory(null)}
                 className={cn(
-                  "rounded-full px-4 py-1 text-xs transition-all lg:text-sm",
-                  isSelected
-                    ? "bg-orange-50 text-orange-600 font-semibold"
-                    : "text-gray-500 hover:bg-gray-50"
+                  chipBtnClass,
+                  selectedSubCategoryId === null
+                    ? "bg-orange-50 font-semibold text-orange-600"
+                    : "font-medium text-[var(--gray-gray-400,#ABABAB)] hover:bg-gray-50",
                 )}
               >
-                {s.name}
+                전체보기
               </button>
-            )
-          })}
+
+              {subCategories.map((s) => {
+                const isSelected = selectedSubCategoryId === s.id
+                return (
+                  <button
+                    type="button"
+                    key={s.id}
+                    onClick={() => onSelectSubCategory(s.id)}
+                    className={cn(
+                      chipBtnClass,
+                      isSelected
+                        ? "bg-orange-50 font-semibold text-orange-600"
+                        : "font-medium text-[var(--gray-gray-400,#ABABAB)] hover:bg-gray-50",
+                    )}
+                  >
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
-      )}
+      ) : null}
     </section>
   )
 }

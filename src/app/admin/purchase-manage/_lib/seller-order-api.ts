@@ -145,3 +145,47 @@ export async function rejectSellerPurchaseOrder(params: {
   );
   return getDataPayload(payload);
 }
+
+export async function completeSellerPurchaseOrder(params: {
+  orderId: number;
+  shippingFee?: string;
+}): Promise<unknown> {
+  const payload = await requestApi<unknown>(
+    `/api/seller/purchase-orders/${params.orderId}/record-purchase`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        platform: "OTHER",
+        note: "관리자 승인 처리",
+        ...(params.shippingFee ? { shippingFee: params.shippingFee } : {}),
+      }),
+    }
+  );
+  return getDataPayload(payload);
+}
+
+export async function createExpenseFromSellerOrder(params: {
+  orderId: number;
+  itemsAmount: number;
+  shippingAmount?: number;
+  note?: string;
+}): Promise<unknown | null> {
+  try {
+    const payload = await requestApi<unknown>("/api/expenses", {
+      method: "POST",
+      body: JSON.stringify({
+        purchaseOrderId: params.orderId,
+        itemsAmount: params.itemsAmount,
+        shippingAmount: params.shippingAmount ?? 0,
+        ...(params.note ? { note: params.note } : {}),
+      }),
+    });
+    return getDataPayload(payload);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "지출 생성에 실패했습니다.";
+    // 이미 지출이 등록된 주문은 승인 플로우를 막지 않습니다.
+    if (message.includes("이미 등록")) return null;
+    throw error;
+  }
+}

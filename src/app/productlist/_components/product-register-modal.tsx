@@ -18,6 +18,7 @@ import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ApiError, createProduct, updateProduct } from "../_lib/api"
 import type { CatalogCategory, Product } from "../_lib/types"
+import { CategoryManageModal } from "./category-manage-modal"
 
 /** 숫자만 반영해 천 단위 콤마로 표시 */
 function formatPriceInputValue(raw: string): string {
@@ -40,6 +41,8 @@ interface ProductRegisterModalProps {
   mode?: "create" | "edit"
   initialProduct?: Product | null
   onSuccess?: () => void
+  /** 카테고리 관리 모달에서 변경 후 목록·필터용 카탈로그 갱신 */
+  onCategoriesRefresh?: () => void
 }
 
 function CategorySelect({
@@ -137,6 +140,7 @@ export function ProductRegisterModal({
   mode = "create",
   initialProduct = null,
   onSuccess,
+  onCategoriesRefresh,
 }: ProductRegisterModalProps) {
   const [name, setName] = useState("")
   const [priceStr, setPriceStr] = useState("")
@@ -146,6 +150,7 @@ export function ProductRegisterModal({
   const [subCategoryId, setSubCategoryId] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [categoryManageOpen, setCategoryManageOpen] = useState(false)
 
   const resetForm = useCallback(() => {
     setName("")
@@ -182,7 +187,12 @@ export function ProductRegisterModal({
     prevOpen.current = open
   }, [open, mode, initialProduct, catalogRows, resetForm])
 
+  useEffect(() => {
+    if (!open) setCategoryManageOpen(false)
+  }, [open])
+
   const handleClose = () => {
+    setCategoryManageOpen(false)
     onOpenChange(false)
     resetForm()
   }
@@ -235,6 +245,7 @@ export function ProductRegisterModal({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(90dvh,90vh)] w-full max-w-[500px] overflow-y-auto p-6 lg:p-8">
         <DialogHeader>
@@ -258,7 +269,17 @@ export function ProductRegisterModal({
           </DialogField>
 
           <DialogField>
-            <DialogLabel>카테고리</DialogLabel>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <DialogLabel className="mb-0">카테고리</DialogLabel>
+              <Button
+                type="button"
+                variant="outlined"
+                className="h-9 shrink-0 rounded-[10px] px-3 text-xs whitespace-nowrap"
+                onClick={() => setCategoryManageOpen(true)}
+              >
+                카테고리 관리
+              </Button>
+            </div>
             <CategorySelect
               catalogRows={catalogRows}
               selectedMainId={mainCategoryId}
@@ -325,5 +346,16 @@ export function ProductRegisterModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <CategoryManageModal
+      open={categoryManageOpen}
+      onOpenChange={setCategoryManageOpen}
+      catalogRows={catalogRows}
+      nested
+      onSuccess={() => {
+        onCategoriesRefresh?.()
+      }}
+    />
+    </>
   )
 }

@@ -45,14 +45,22 @@ function DialogOverlay({
   )
 }
 
+type DialogContentProps = React.ComponentProps<
+  typeof DialogPrimitive.Content
+> & {
+  /** 2중 모달 등에서 오버레이 z-index를 올릴 때 사용 */
+  overlayClassName?: string
+}
+
 function DialogContent({
   className,
   children,
+  overlayClassName,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: DialogContentProps) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(

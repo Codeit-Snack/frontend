@@ -92,16 +92,47 @@ async function fetchWithAuth<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function fetchWithAuthOrNull<T>(path: string): Promise<T | null> {
+  const token = getAccessToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
+    }
+    if (response.status === 403) {
+      throw new Error("상품 상세를 조회할 권한이 없습니다.");
+    }
+    throw new Error("상품 정보를 불러오지 못했습니다.");
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function getProductRegistrationById(
   productId: number
 ): Promise<ProductRegistration | null> {
   if (!Number.isFinite(productId)) {
     return null;
   }
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  return (
-    mockProductRegistrations.find((item) => item.id === productId) ?? null
+
+  const payload = await fetchWithAuthOrNull<ApiSuccessResponse<ProductListItemDto>>(
+    `/api/products/${productId}`
   );
+
+  if (!payload) {
+    return null;
+  }
+
+  return mapProductRegistration(payload.data);
 }
 
 export async function getProductRegistrations(

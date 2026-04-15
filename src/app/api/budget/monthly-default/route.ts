@@ -25,16 +25,19 @@ function logAuthForward(meta: {
 }
 
 export async function GET(req: Request) {
+  const incoming = new URL(req.url)
+  const query = incoming.searchParams.toString()
+  const upstreamPath = `${API_BASE_URL}/api/budget/monthly-default${query ? `?${query}` : ""}`
   const headers = buildHeaders(req)
   logAuthForward({
     method: "GET",
-    path: "/api/budget/monthly-default",
+    path: `/api/budget/monthly-default${query ? `?${query}` : ""}`,
     hasIncomingAuthorization: Boolean(req.headers.get("authorization")),
     hasForwardAuthorization: Boolean(headers.get("authorization")),
     incomingOrganizationId: req.headers.get("x-organization-id"),
     forwardOrganizationId: headers.get("x-organization-id"),
   })
-  const upstream = await fetch(`${API_BASE_URL}/api/budget/monthly-default`, {
+  const upstream = await fetch(upstreamPath, {
     method: "GET",
     headers,
   })

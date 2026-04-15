@@ -3,7 +3,8 @@
 import { Suspense, useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { Button } from "@/components/ui/button";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
@@ -18,7 +19,7 @@ const DEFAULT_IMAGE = "/assets/purchase_request_details/cola.png";
 const STATUS_LABEL: Record<PurchaseRequestDetailResult["status"], string> = {
   OPEN: "승인 대기",
   PARTIALLY_APPROVED: "부분 승인",
-  READY_TO_PURCHASE: "구매 준비",
+  READY_TO_PURCHASE: "승인 완료",
   REJECTED: "구매 반려",
   CANCELED: "요청 취소",
   PURCHASED: "구매 완료",
@@ -36,6 +37,14 @@ function formatDate(value: string | null): string {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
   return `${yyyy}. ${mm}. ${dd}.`;
+}
+
+function pickFirstString(record: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 function InfoField({ label, value }: { label: string; value: string }) {
@@ -99,6 +108,54 @@ function PurchaseRequestDetailContent() {
     [detail]
   );
 
+  const approvalInfo = useMemo(() => {
+    if (!detail) {
+      return {
+        approvalDate: "-",
+        manager: "-",
+        resultMessage: "-",
+      };
+    }
+
+    const raw = detail as unknown as Record<string, unknown>;
+    const approvalDateRaw = pickFirstString(raw, [
+      "approvedAt",
+      "approvalDate",
+      "decisionAt",
+      "decidedAt",
+      "decision_at",
+      "updatedAt",
+    ]);
+    const manager = pickFirstString(raw, [
+      "approverName",
+      "approver_name",
+      "managerName",
+      "approvedByName",
+      "approved_by_name",
+      "decisionByName",
+      "decision_by_name",
+      "manager",
+    ]);
+    const resultMessage = pickFirstString(raw, [
+      "decisionMessage",
+      "decision_message",
+      "approvalMessage",
+      "approval_message",
+      "rejectReason",
+      "reject_reason",
+      "rejectionReason",
+      "rejection_reason",
+      "message",
+    ]);
+
+    return {
+      approvalDate: formatDate(approvalDateRaw ?? detail.updatedAt ?? null),
+      manager: manager ?? "-",
+      resultMessage:
+        resultMessage ?? (detail.status === "REJECTED" ? "반려된 요청입니다." : "-"),
+    };
+  }, [detail]);
+
   const handleRestoreCart = async () => {
     if (!detail || isRestoringCart) return;
 
@@ -128,7 +185,7 @@ function PurchaseRequestDetailContent() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn={isLoggedIn} role={role} cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn={isLoggedIn} role={role} />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">
@@ -284,13 +341,13 @@ function PurchaseRequestDetailContent() {
                 {(approvalOpen || !useAccordion) && (
                   <div className="space-y-6 pt-4">
                     <p className="text_xl_regular gray_gray_400_t">
-                      {formatDate(detail.updatedAt)}
+                      {approvalInfo.approvalDate}
                     </p>
-                    <InfoField label="담당자" value="-" />
+                    <InfoField label="담당자" value={approvalInfo.manager} />
                     <InfoField label="상태" value={STATUS_LABEL[detail.status]} />
                     <InfoField
                       label="결과 메시지"
-                      value={detail.status === "REJECTED" ? "반려된 요청입니다." : "-"}
+                      value={approvalInfo.resultMessage}
                     />
                   </div>
                 )}

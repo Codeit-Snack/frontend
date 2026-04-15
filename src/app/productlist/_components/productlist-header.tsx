@@ -48,10 +48,8 @@ export function ProductListHeader({
   }, [open])
 
   return (
-    <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <h1 className="text-2xl font-bold text-[#37352f] lg:text-3xl">상품 리스트</h1>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+    <header className="flex w-full flex-col items-end gap-3 md:flex-row md:items-center md:justify-end">
+      <div className="flex w-full min-w-0 max-w-[560px] flex-col items-stretch gap-3 self-end md:w-auto md:max-w-none md:flex-row md:items-center md:gap-3">
         {searchLeading ? (
           <div className="shrink-0 self-start md:self-center">{searchLeading}</div>
         ) : null}
@@ -72,16 +70,18 @@ export function ProductListHeader({
             />
           </div>
         ) : (
-          <Input
-            variant="search"
-            inputSize="sm"
-            value={keyword}
-            onChange={(event) => onChangeKeyword(event.target.value)}
-            placeholder="상품명으로 검색하세요"
-          />
+          <div className="min-w-0 w-full md:w-[min(100%,560px)] md:max-w-[560px]">
+            <Input
+              variant="search"
+              inputSize="sm"
+              value={keyword}
+              onChange={(event) => onChangeKeyword(event.target.value)}
+              placeholder="상품명으로 검색하세요"
+            />
+          </div>
         )}
 
-        <div ref={containerRef} className="relative self-end md:self-auto">
+        <div ref={containerRef} className="relative shrink-0 self-end md:self-auto">
           <Sort
             size="sm"
             label={sortLabel}
