@@ -10,14 +10,13 @@ import type {
 } from "./types"
 
 /**
- * Budget API is called via Next Route Handlers:
- * Browser -> /api/budget/* (same-origin) -> Next Route Handler -> Backend
+ * 동일 출처 Next Route Handler로 백엔드 프록시:
+ * `/api/budget/*`, `/api/expenses` 등
  */
-function budgetProxyPath(path: string): string {
+function sameOriginApiPath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`
-  return normalized.startsWith("/api/budget/")
-    ? normalized
-    : `/api/budget${normalized}`
+  if (normalized.startsWith("/api/")) return normalized
+  return `/api/budget${normalized}`
 }
 
 function normalizeStoredToken(raw: string | null): string | null {
@@ -163,23 +162,33 @@ function parseErrorMessage(payload: unknown, fallback: string) {
 
   if (!payload || typeof payload !== "object") return fallback
 
+  const root = payload as Record<string, unknown>
   const data =
-    "data" in (payload as Record<string, unknown>) &&
-    (payload as { data?: unknown }).data &&
-    typeof (payload as { data?: unknown }).data === "object"
-      ? ((payload as { data?: unknown }).data as Record<string, unknown>)
+    "data" in root &&
+    root.data &&
+    typeof root.data === "object" &&
+    !Array.isArray(root.data)
+      ? (root.data as Record<string, unknown>)
       : null
 
-  const candidates = [
-    (payload as { message?: unknown }).message,
-    (payload as { error?: unknown }).error,
-    (payload as { detail?: unknown }).detail,
+  const messageField = root.message
+  if (Array.isArray(messageField)) {
+    const parts = messageField.filter((x): x is string => typeof x === "string")
+    if (parts.length > 0) return parts.join(" ")
+  }
+
+  const candidates: unknown[] = [
+    messageField,
+    root.error,
+    root.detail,
     data?.message,
     data?.error,
     data?.detail,
   ]
 
-  const text = candidates.find((value) => typeof value === "string")
+  const text = candidates.find((value) => typeof value === "string") as
+    | string
+    | undefined
   return text ?? fallback
 }
 
@@ -188,7 +197,7 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const organizationId = resolveOrganizationIdFromToken(token)
   const hasBody = init?.body !== undefined
 
-  const url = budgetProxyPath(path)
+  const url = sameOriginApiPath(path)
 
   const doFetch = () =>
     fetch(url, {
@@ -232,12 +241,24 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    console.error("[budget-api] request failed", {
-      method: init?.method ?? "GET",
-      url,
-      status: response.status,
-      response: json,
-    })
+    const bodyPreview =
+      typeof text === "string" && text.length > 0
+        ? text.length > 500
+          ? `${text.slice(0, 500)}…`
+          : text
+        : "(응답 본문 없음)"
+    const parsedForLog =
+      json === null || json === undefined
+        ? null
+        : typeof json === "object" &&
+            !Array.isArray(json) &&
+            Object.keys(json as object).length === 0
+          ? "(빈 JSON 객체 — raw는 bodyPreview 참고)"
+          : json
+    console.error(
+      `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`,
+      { bodyPreview, parsed: parsedForLog },
+    )
     if (response.status === 401) {
       throw new Error(
         parseErrorMessage(
@@ -249,7 +270,12 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 403) {
       throw new Error("권한이 없습니다. super_admin 권한이 필요합니다.")
     }
-    throw new Error(parseErrorMessage(json, "요청 처리에 실패했습니다."))
+    throw new Error(
+      parseErrorMessage(
+        json,
+        `요청 처리에 실패했습니다. (${response.status})`,
+      ),
+    )
   }
 
   return json as T
@@ -362,4 +388,253 @@ export async function postBudgetPeriod(body: PostBudgetPeriodBody): Promise<void
     method: "POST",
     body: JSON.stringify(body),
   })
+}
+
+// ---------------------------------------------------------------------------
+// Budget periods summary / remaining (구매 상세·구매내역 카드 등)
+// 동일 출처 `/api/budget/*` + refresh 재시도 — 백엔드 직접 호출보다 인증이 안정적입니다.
+// ---------------------------------------------------------------------------
+
+export interface BudgetSummaryResult {
+  year: number
+  month: number
+  budgetAmount: string
+  spentAmount: string
+  reservedActiveAmount: string
+  remainingAmount: string
+  hasPeriodConfigured: boolean
+}
+
+function unwrapBudgetEnvelope(payload: unknown): unknown {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return (payload as { data?: unknown }).data ?? null
+  }
+  return payload
+}
+
+function isBudgetRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function parseYearMonth(record: Record<string, unknown>): { y: number; m: number } | null {
+  let y = Number(record.year)
+  let m = Number(record.month)
+  if ((!Number.isFinite(y) || !Number.isFinite(m)) && isBudgetRecord(record.yearMonth)) {
+    y = Number(record.yearMonth.year)
+    m = Number(record.yearMonth.month)
+  }
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
+  return { y, m }
+}
+
+function parseRemainingAmount(record: Record<string, unknown>): number | null {
+  const raw =
+    record.remainingAmount ??
+    record.remaining_amount ??
+    record.remainingBudget ??
+    record.remaining_budget
+  if (raw === undefined || raw === null) return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+/** GET `/api/budget/periods/summary` 응답 */
+function pickRemainingFromSummaryPayload(payload: unknown): number | null {
+  const tryRecord = (r: Record<string, unknown>): number | null => {
+    const direct = parseRemainingAmount(r)
+    if (direct !== null) return direct
+    if (isBudgetRecord(r.summary)) {
+      const nested = parseRemainingAmount(r.summary)
+      if (nested !== null) return nested
+    }
+    if (isBudgetRecord(r.data)) {
+      const nested = parseRemainingAmount(r.data)
+      if (nested !== null) return nested
+    }
+    return null
+  }
+
+  if (isBudgetRecord(payload)) {
+    const fromRoot = tryRecord(payload)
+    if (fromRoot !== null) return fromRoot
+  }
+  const inner = unwrapBudgetEnvelope(payload)
+  if (isBudgetRecord(inner)) {
+    const fromInner = tryRecord(inner)
+    if (fromInner !== null) return fromInner
+  }
+  return null
+}
+
+function pickBudgetPeriodList(payload: unknown): Record<string, unknown>[] {
+  const inner = unwrapBudgetEnvelope(payload)
+  if (Array.isArray(inner)) {
+    return inner.filter(isBudgetRecord) as Record<string, unknown>[]
+  }
+  if (!isBudgetRecord(inner)) return []
+  const nested = [inner.periods, inner.items, inner.list, inner.content, inner.results]
+  for (const c of nested) {
+    if (Array.isArray(c)) return c.filter(isBudgetRecord) as Record<string, unknown>[]
+  }
+  if (
+    parseRemainingAmount(inner) !== null ||
+    inner.budgetAmount !== undefined ||
+    inner.budget_amount !== undefined
+  ) {
+    return [inner]
+  }
+  return []
+}
+
+/** GET `/api/budget/periods` 목록에서 남은 예산 추출 */
+export function extractRemainingFromPeriodsPayload(
+  payload: unknown,
+  year: number,
+  month: number,
+): number | null {
+  const list = pickBudgetPeriodList(payload)
+  const match = list.find((row) => {
+    const ym = parseYearMonth(row)
+    return ym && ym.y === year && ym.m === month
+  })
+  const target = match ?? list[0]
+  if (!target) return null
+  return parseRemainingAmount(target)
+}
+
+/** GET `/api/budget/periods/summary` — 구매 상세 등 */
+export async function getBudgetSummary(params: {
+  year: number
+  month: number
+}): Promise<BudgetSummaryResult> {
+  const query = new URLSearchParams({
+    year: String(params.year),
+    month: String(params.month),
+  })
+  const payload = await requestApi<unknown>(
+    `/api/budget/periods/summary?${query.toString()}`,
+  )
+  return unwrapBudgetEnvelope(payload) as BudgetSummaryResult
+}
+
+/**
+ * 이번 달 남은 예산: summary 우선, 없으면 periods 목록.
+ */
+export async function fetchMonthlyRemainingBudgetFromPeriods(params: {
+  year: number
+  month: number
+}): Promise<number | null> {
+  const query = new URLSearchParams({
+    year: String(params.year),
+    month: String(params.month),
+  })
+  const q = query.toString()
+
+  try {
+    const summaryPayload = await requestApi<unknown>(`/api/budget/periods/summary?${q}`)
+    const fromSummary = pickRemainingFromSummaryPayload(summaryPayload)
+    if (fromSummary !== null) return fromSummary
+  } catch {
+    // summary 실패 시 periods로 보조
+  }
+
+  const payload = await requestApi<unknown>(`/api/budget/periods?${q}`)
+  return extractRemainingFromPeriodsPayload(payload, params.year, params.month)
+}
+
+/** GET `/api/expenses` — 이번 달 지출 합계 (응답 스키마가 달라질 수 있음) */
+function pickTotalExpenseFromPayload(payload: unknown): number | null {
+  const inner = unwrapBudgetEnvelope(payload) as unknown
+
+  if (Array.isArray(inner)) {
+    let sum = 0
+    let has = false
+    for (const row of inner) {
+      if (!isBudgetRecord(row)) continue
+      const a = Number(
+        row.amount ??
+          row.totalAmount ??
+          row.total_amount ??
+          row.spentAmount ??
+          row.price ??
+          row.lineTotal,
+      )
+      if (Number.isFinite(a)) {
+        sum += a
+        has = true
+      }
+    }
+    return has ? sum : null
+  }
+
+  if (isBudgetRecord(inner)) {
+    const n = Number(
+      inner.totalAmount ??
+        inner.total_amount ??
+        inner.spentAmount ??
+        inner.spent_amount ??
+        inner.amount ??
+        inner.total ??
+        inner.sum ??
+        inner.monthlyTotal ??
+        inner.monthly_total,
+    )
+    if (Number.isFinite(n)) return n
+  }
+
+  if (isBudgetRecord(payload)) {
+    const n = Number(
+      payload.totalAmount ??
+        payload.total_amount ??
+        payload.spentAmount ??
+        payload.spent_amount ??
+        payload.amount ??
+        payload.total,
+    )
+    if (Number.isFinite(n)) return n
+  }
+
+  return null
+}
+
+/**
+ * `GET /api/expenses` — 구매내역 「이번 달 지출액」 카드.
+ * 백엔드마다 쿼리 스키마가 달라 400이 나면 다른 형태로 순차 재시도합니다.
+ */
+export async function fetchMonthlyExpensesTotal(params: {
+  year: number
+  month: number
+}): Promise<number | null> {
+  const { year, month } = params
+  const ym = `${year}-${String(month).padStart(2, "0")}`
+  const lastDay = new Date(year, month, 0).getDate()
+  const from = `${year}-${String(month).padStart(2, "0")}-01`
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+
+  const paths: string[] = [
+    `/api/expenses`,
+    `/api/expenses?yearMonth=${encodeURIComponent(ym)}`,
+    `/api/expenses?year=${year}&month=${month}`,
+    `/api/expenses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    `/api/expenses?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`,
+  ]
+
+  let lastErr: Error | null = null
+  for (let i = 0; i < paths.length; i++) {
+    const path = paths[i] ?? ""
+    try {
+      const payload = await requestApi<unknown>(path)
+      return pickTotalExpenseFromPayload(payload)
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e))
+      const msg = lastErr.message
+      const canTryAlternate =
+        /\((400|404)\)/.test(msg) ||
+        /Bad Request/i.test(msg) ||
+        /not found/i.test(msg)
+      if (canTryAlternate && i < paths.length - 1) continue
+      throw lastErr
+    }
+  }
+  throw lastErr ?? new Error("지출 정보를 불러오지 못했습니다.")
 }
