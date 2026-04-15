@@ -4,8 +4,6 @@ import { useState } from "react"
 import { CONTENT_PADDING_X } from "@/components/header"
 import Pagination from "@/components/ui/pagination"
 import { useAuthHeader } from "@/hooks/use-auth-header"
-import { Button } from "@/components/ui/button"
-import { CategoryManageModal } from "./_components/category-manage-modal"
 import { ProductListAddProductButton } from "./_components/productlist-add-product-button"
 import { ProductRegisterModal } from "./_components/product-register-modal"
 import { ProductListFilters } from "./_components/productlist-filters"
@@ -44,7 +42,6 @@ export default function ProductListPage() {
   } = useProducts()
 
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
 
   const handleOpenRegisterModal = () => {
     setRegisterModalOpen(true)
@@ -63,18 +60,6 @@ export default function ProductListPage() {
             sortOptions={sortOptions}
             selectedSort={sort}
             onSelectSort={setSort}
-            searchLeading={
-              canManage ? (
-                <Button
-                  type="button"
-                  variant="outlined"
-                  className="h-[54px] shrink-0 rounded-[12px] px-4 text-sm whitespace-nowrap"
-                  onClick={() => setCategoryModalOpen(true)}
-                >
-                  카테고리 관리
-                </Button>
-              ) : null
-            }
           />
           {categoriesError ? (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -116,12 +101,7 @@ export default function ProductListPage() {
             catalogRows={catalogRows}
             mode="create"
             onSuccess={refreshProductList}
-          />
-          <CategoryManageModal
-            open={categoryModalOpen}
-            onOpenChange={setCategoryModalOpen}
-            catalogRows={catalogRows}
-            onSuccess={refreshCategories}
+            onCategoriesRefresh={refreshCategories}
           />
         </>
       ) : null}
