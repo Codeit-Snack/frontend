@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  ensureAccessTokenFresh,
+  refreshAuthTokensOnce,
+} from "@/lib/auth/ensure-access-token";
+import { buildCartAuthHeaders } from "@/lib/cart/auth-headers";
+import {
   Dialog,
   DialogTrigger,
   DialogContent,
@@ -39,22 +44,53 @@ export default function ItemRequestModal({
 }: ItemRequestModalProps) {
   const [message, setMessage] = useState("");
 
-const handleConfirm = async () => {
-  if (items.length === 0) return;
-  try {
-    const res = await fetch("/api/purchase-requests", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestMessage: message }),
+  const handleConfirm = async () => {
+    if (items.length === 0) return;
+
+    const okSession = await ensureAccessTokenFresh();
+    if (!okSession) {
+      console.error("구매 요청: 로그인이 만료되었습니다. 다시 로그인해 주세요.");
+      return;
+    }
+
+    // POST /api/purchase-requests 본문은 백엔드 DTO에 맞게 `requestMessage`만 전송
+    const payload = JSON.stringify({
+      requestMessage: message.trim(),
     });
-    if (!res.ok) throw new Error("구매 요청 실패");
-  } catch (e) {
-    console.error(e);
-    return;
-  }
-  onComplete?.(message);
-};
+
+    const doPost = () => {
+      const auth = buildCartAuthHeaders();
+      if (!auth.Authorization) {
+        return Promise.resolve(
+          new Response(null, { status: 401, statusText: "Unauthorized" }),
+        );
+      }
+      return fetch("/api/purchase-requests", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...auth,
+        },
+        body: payload,
+      });
+    };
+
+    try {
+      let res = await doPost();
+      if (res.status === 401 && (await refreshAuthTokensOnce())) {
+        res = await doPost();
+      }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(errText || `구매 요청 실패 (${res.status})`);
+      }
+    } catch (e) {
+      console.error(e);
+      return;
+    }
+    onComplete?.(message);
+  };
 
   return (
     <Dialog>

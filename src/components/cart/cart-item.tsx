@@ -17,6 +17,7 @@ interface CartItemProps {
   quantity: number;
   shipping: number;
   checked: boolean;
+  requesterName: string;
   onToggle: (id: string) => void;
   onDelete?: (id: string) => void;
   onQuantityChange?: (id: string, quantity: number) => void;
@@ -32,6 +33,7 @@ export default function CartItem({
   quantity,
   shipping,
   checked,
+  requesterName,
   onToggle,
   onDelete,
   onQuantityChange,
@@ -101,7 +103,7 @@ export default function CartItem({
         <div className="flex flex-col items-center justify-center gap-5 border-l border-gray-300">
           <p className="text-[24px] font-[700] text-gray-900">{(price * quantity).toLocaleString()}원</p>
           <ItemRequestModal
-            requesterName="김스낵"
+            requesterName={requesterName}
             items={requestItem}
             totalCount={quantity}
             totalPrice={price * quantity}
@@ -173,7 +175,7 @@ export default function CartItem({
             </div>
           </div>
           <ItemRequestModal
-            requesterName="김스낵"
+            requesterName={requesterName}
             items={requestItem}
             totalCount={quantity}
             totalPrice={price * quantity}

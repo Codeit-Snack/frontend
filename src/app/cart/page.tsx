@@ -7,7 +7,10 @@ import { Header } from "@/components/header";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import CartComplete from "@/components/cart/cart-complete";
 import { useDevice } from "@/hooks/use-device";
-import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
+import { useRequesterDisplayName } from "@/hooks/use-requester-display-name";
+import { buildCartAuthHeaders } from "@/lib/cart/auth-headers";
+import { notifyCartLineCountChanged } from "@/lib/cart/events";
+import { parseLineQuantity, pickCartItemList } from "@/lib/cart/payload";
 
 interface CartItemData {
   id: string;
@@ -18,52 +21,6 @@ interface CartItemData {
   quantity: number;
   shipping: number;
   checked: boolean;
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-    const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function buildCartAuthHeaders(): Record<string, string> {
-  const token =
-    typeof window === "undefined"
-      ? ""
-      : (localStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ?? "").trim();
-  const h: Record<string, string> = {};
-  if (!token) return h;
-  h.Authorization = `Bearer ${token}`;
-  const payload = decodeJwtPayload(token);
-  const org =
-    payload?.organizationId ??
-    payload?.organization_id ??
-    payload?.orgId ??
-    payload?.org_id;
-  if (org !== undefined && org !== null && String(org).trim()) {
-    h["X-Organization-Id"] = String(org).trim();
-  }
-  return h;
-}
-
-function pickCartItemList(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-  const p = payload as Record<string, unknown>;
-  const data =
-    p.data !== undefined && p.data !== null && typeof p.data === "object" && !Array.isArray(p.data)
-      ? (p.data as Record<string, unknown>)
-      : p;
-  if (Array.isArray(data.items)) return data.items;
-  if (Array.isArray(data.cartItems)) return data.cartItems;
-  if (Array.isArray(data.lines)) return data.lines;
-  return [];
 }
 
 function mapCartRow(item: unknown): CartItemData | null {
@@ -81,7 +38,7 @@ function mapCartRow(item: unknown): CartItemData | null {
     category: String(product.categoryId ?? product.category ?? ""),
     name: String(product.name ?? product.productName ?? ""),
     price: Number(product.price ?? product.unitPrice ?? 0),
-    quantity: Math.max(1, Number(row.quantity ?? 1)),
+    quantity: parseLineQuantity(row),
     shipping: 3000,
     checked: true,
   };
@@ -93,6 +50,7 @@ export default function CartPage() {
   const [showComplete, setShowComplete] = useState(false);
   const [completeMessage, setCompleteMessage] = useState("");
   const device = useDevice();
+  const requesterName = useRequesterDisplayName();
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -100,6 +58,7 @@ export default function CartPage() {
         const auth = buildCartAuthHeaders();
         if (!auth.Authorization) {
           setItems([]);
+          notifyCartLineCountChanged();
           return;
         }
         const res = await fetch("/api/cart", {
@@ -108,15 +67,18 @@ export default function CartPage() {
         });
         if (!res.ok) {
           setItems([]);
+          notifyCartLineCountChanged();
           return;
         }
         const data: unknown = await res.json();
         const rows = pickCartItemList(data);
         const mapped = rows.map(mapCartRow).filter((v): v is CartItemData => v !== null);
         setItems(mapped);
+        notifyCartLineCountChanged();
       } catch (e) {
         console.error("장바구니 조회 실패", e);
         setItems([]);
+        notifyCartLineCountChanged();
       }
     };
     fetchCart();
@@ -157,6 +119,7 @@ export default function CartPage() {
       console.error("전체 삭제 실패", e);
     }
     setItems([]);
+    notifyCartLineCountChanged();
   };
 
   const deleteSelected = async () => {
@@ -176,6 +139,7 @@ export default function CartPage() {
       console.error("선택 삭제 실패", e);
     }
     setItems((prev) => prev.filter((item) => !item.checked));
+    notifyCartLineCountChanged();
   };
 
   const deleteItem = async (id: string) => {
@@ -190,6 +154,7 @@ export default function CartPage() {
       console.error("삭제 실패", e);
     }
     setItems((prev) => prev.filter((item) => item.id !== id));
+    notifyCartLineCountChanged();
   };
 
   const changeQuantity = async (id: string, quantity: number) => {
@@ -221,6 +186,7 @@ export default function CartPage() {
         onBack={() => {
           setItems((prev) => prev.filter((item) => !item.checked));
           setShowComplete(false);
+          notifyCartLineCountChanged();
         }}
       />
     );
@@ -239,6 +205,7 @@ export default function CartPage() {
         <div className="flex flex-col lg:flex-row gap-4">
           <CartItemList
             items={items}
+            requesterName={requesterName}
             allChecked={allChecked}
             onToggleAll={toggleAll}
             onToggleItem={toggleItem}
@@ -258,6 +225,7 @@ export default function CartPage() {
             totalPrice={totalPrice}
             totalCount={totalCount}
             requestItems={requestItems}
+            requesterName={requesterName}
             onComplete={(message) => {
               setCompleteMessage(message);
               setShowComplete(true);

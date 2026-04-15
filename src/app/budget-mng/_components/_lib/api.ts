@@ -230,13 +230,17 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
 
-  // Rate limit — 한 번만 대기 후 재시도
-  if (response.status === 429) {
+  // 429 Too Many Requests — 응답 본문을 소비한 뒤 Retry-After·지수 백오프로 재시도
+  let rateLimitAttempt = 0
+  const maxRateLimitAttempts = 4
+  while (response.status === 429 && rateLimitAttempt < maxRateLimitAttempts) {
+    rateLimitAttempt++
+    await response.text()
     const ra = response.headers.get("retry-after")
-    let waitMs = 2000
+    let waitMs = Math.min(1500 * 2 ** (rateLimitAttempt - 1), 20_000)
     if (ra) {
       const sec = Number.parseInt(ra, 10)
-      if (Number.isFinite(sec)) waitMs = Math.min(sec * 1000, 10_000)
+      if (Number.isFinite(sec)) waitMs = Math.min(sec * 1000, 30_000)
     }
     await new Promise((r) => setTimeout(r, waitMs))
     response = await doFetch()
@@ -267,10 +271,12 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
             Object.keys(json as object).length === 0
           ? "(빈 JSON 객체 — raw는 bodyPreview 참고)"
           : json
-    console.error(
-      `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`,
-      { bodyPreview, parsed: parsedForLog },
-    )
+    const logLine = `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`
+    if (response.status === 429) {
+      console.warn(logLine, { bodyPreview, parsed: parsedForLog })
+    } else {
+      console.error(logLine, { bodyPreview, parsed: parsedForLog })
+    }
     if (response.status === 401) {
       throw new Error(
         parseErrorMessage(
@@ -640,11 +646,16 @@ export async function fetchMonthlyExpensesTotal(params: {
     } catch (e) {
       lastErr = e instanceof Error ? e : new Error(String(e))
       const msg = lastErr.message
+      // 429는 같은 API를 연속으로 두드리면 악화되므로 대체 쿼리로 넘어가지 않음
+      if (/\(429\)/.test(msg)) throw lastErr
       const canTryAlternate =
         /\((400|404)\)/.test(msg) ||
         /Bad Request/i.test(msg) ||
         /not found/i.test(msg)
-      if (canTryAlternate && i < paths.length - 1) continue
+      if (canTryAlternate && i < paths.length - 1) {
+        await new Promise((r) => setTimeout(r, 400))
+        continue
+      }
       throw lastErr
     }
   }

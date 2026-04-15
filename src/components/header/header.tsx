@@ -21,6 +21,20 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 /** 로그인 PC GNB가 좁은 뷰포트에서 꽉 차기 전·줄바꿈 전에 모바일(햄버거) 헤더로 전환 — Tailwind `lg`와 동일 */
 const HEADER_USE_MOBILE_NAV_QUERY = "(max-width: 1023px)";
 
+/** 장바구니 GNB: 품목(줄) 개수 — 총 수량 합 아님 */
+function CartNavBadge({ count }: { count: number }) {
+  if (count < 1) return null;
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <span
+      aria-label={`장바구니 품목 ${label}개`}
+      className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-orange-500 px-1.5 text-xs font-semibold text-white"
+    >
+      {label}
+    </span>
+  );
+}
+
 /** 로고 클릭: 비로그인 → 랜딩, 로그인 후 → 상품 리스트 */
 const LOGO_HREF_LANDING = "/";
 const LOGO_HREF_PRODUCT_LIST = "/productlist";
@@ -291,7 +305,7 @@ interface MobileHeaderProps extends ClassNameProps {
 }
 
 export function MobileHeader({
-  cartCount: _cartCount = 0,
+  cartCount = 0,
   className = "",
   isLoggedIn = false,
   userRole = "member",
@@ -398,10 +412,15 @@ export function MobileHeader({
         <div className="flex items-center gap-1 shrink-0">
             <Link
               href="/cart"
-              className="p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
-              aria-label="장바구니"
+              className="relative p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+              aria-label={cartCount > 0 ? `장바구니, 품목 ${cartCount > 99 ? "99개 이상" : `${cartCount}개`}` : "장바구니"}
             >
               <ShoppingCart className="w-6 h-6" />
+              {cartCount > 0 ? (
+                <span className="absolute top-0.5 right-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              ) : null}
             </Link>
             <Link
               href="/profile"
@@ -421,7 +440,7 @@ interface DetailHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function DetailHeader({ cartCount: _cartCount = 0, className = "" }: DetailHeaderProps) {
+export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.member;
   return (
@@ -461,9 +480,10 @@ export function DetailHeader({ cartCount: _cartCount = 0, className = "" }: Deta
         <div className={cn("flex shrink-0 items-center", GNB_RIGHT_GAP)}>
           <Link
             href="/cart"
-            className="flex shrink-0 items-center gap-1 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
+            className="flex shrink-0 items-center gap-1.5 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
           >
             Cart
+            <CartNavBadge count={cartCount} />
           </Link>
           <Link
             href="/profile"
@@ -485,7 +505,7 @@ interface AdminHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function AdminHeader({ cartCount: _cartCount = 0, className = "" }: AdminHeaderProps) {
+export function AdminHeader({ cartCount = 0, className = "" }: AdminHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.admin;
   return (
@@ -518,8 +538,12 @@ export function AdminHeader({ cartCount: _cartCount = 0, className = "" }: Admin
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <Link
+            href="/cart"
+            className="flex items-center gap-1.5 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+          >
             Cart
+            <CartNavBadge count={cartCount} />
           </Link>
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
@@ -537,7 +561,7 @@ interface SuperAdminHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function SuperAdminHeader({ cartCount: _cartCount = 0, className = "" }: SuperAdminHeaderProps) {
+export function SuperAdminHeader({ cartCount = 0, className = "" }: SuperAdminHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.superAdmin;
   return (
@@ -570,8 +594,12 @@ export function SuperAdminHeader({ cartCount: _cartCount = 0, className = "" }: 
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <Link
+            href="/cart"
+            className="flex items-center gap-1.5 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+          >
             Cart
+            <CartNavBadge count={cartCount} />
           </Link>
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile

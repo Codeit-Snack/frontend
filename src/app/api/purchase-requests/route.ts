@@ -13,25 +13,15 @@ function buildHeaders(req: Request): Headers {
   return headers
 }
 
-type RouteContext = { params: Promise<{ id: string }> }
+/** 백엔드 `GET /api/purchase-requests` — 목록·페이지네이션 */
+export async function GET(req: Request) {
+  const incoming = new URL(req.url)
+  const query = incoming.searchParams.toString()
+  const upstreamUrl = `${API_BASE_URL}/api/purchase-requests${query ? `?${query}` : ""}`
 
-/** 백엔드 `PATCH /api/cart/items/:id` */
-export async function PATCH(req: Request, ctx: RouteContext) {
-  const { id } = await ctx.params
-  let body: string
-  try {
-    body = await req.text()
-  } catch {
-    return NextResponse.json(
-      { success: false, message: "요청 본문을 읽을 수 없습니다." },
-      { status: 400 },
-    )
-  }
-
-  const upstream = await fetch(`${API_BASE_URL}/api/cart/items/${encodeURIComponent(id)}`, {
-    method: "PATCH",
+  const upstream = await fetch(upstreamUrl, {
+    method: "GET",
     headers: buildHeaders(req),
-    body,
   })
 
   const text = await upstream.text()
@@ -43,12 +33,22 @@ export async function PATCH(req: Request, ctx: RouteContext) {
   })
 }
 
-/** 백엔드 `DELETE /api/cart/items/:id` */
-export async function DELETE(req: Request, ctx: RouteContext) {
-  const { id } = await ctx.params
-  const upstream = await fetch(`${API_BASE_URL}/api/cart/items/${encodeURIComponent(id)}`, {
-    method: "DELETE",
+/** 백엔드 `POST /api/purchase-requests` — 구매 요청 생성 */
+export async function POST(req: Request) {
+  let body: string
+  try {
+    body = await req.text()
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "요청 본문을 읽을 수 없습니다." },
+      { status: 400 },
+    )
+  }
+
+  const upstream = await fetch(`${API_BASE_URL}/api/purchase-requests`, {
+    method: "POST",
     headers: buildHeaders(req),
+    body,
   })
 
   const text = await upstream.text()

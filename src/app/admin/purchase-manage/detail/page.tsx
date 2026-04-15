@@ -3,7 +3,8 @@
 import { Suspense, useMemo, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { Button } from "@/components/ui/button";
 import { useDevice } from "@/hooks/use-device";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -228,7 +229,7 @@ function PurchaseManageDetailContent() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn role="admin" cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn role="admin" />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">

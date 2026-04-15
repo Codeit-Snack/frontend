@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
@@ -478,7 +479,7 @@ export default function PurchaseHistoryPage() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn={isLoggedIn} role={role} cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn={isLoggedIn} role={role} />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">
