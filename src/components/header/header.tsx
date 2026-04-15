@@ -291,7 +291,7 @@ interface MobileHeaderProps extends ClassNameProps {
 }
 
 export function MobileHeader({
-  cartCount = 0,
+  cartCount: _cartCount = 0,
   className = "",
   isLoggedIn = false,
   userRole = "member",
@@ -398,15 +398,10 @@ export function MobileHeader({
         <div className="flex items-center gap-1 shrink-0">
             <Link
               href="/cart"
-              className="relative p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
+              className="p-2 gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors"
               aria-label="장바구니"
             >
               <ShoppingCart className="w-6 h-6" />
-              {cartCount > 0 && (
-                <span className="absolute top-0 right-0 bg-[var(--primary-orange-400)] text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              )}
             </Link>
             <Link
               href="/profile"
@@ -426,7 +421,7 @@ interface DetailHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProps) {
+export function DetailHeader({ cartCount: _cartCount = 0, className = "" }: DetailHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.member;
   return (
@@ -466,14 +461,9 @@ export function DetailHeader({ cartCount = 0, className = "" }: DetailHeaderProp
         <div className={cn("flex shrink-0 items-center", GNB_RIGHT_GAP)}>
           <Link
             href="/cart"
-            className="relative flex shrink-0 items-center gap-1 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
+            className="flex shrink-0 items-center gap-1 text_header_nav_bold gray_gray_400_t transition-colors hover:!text-[var(--gray-gray-500)]"
           >
             Cart
-            {cartCount > 0 && (
-              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
           </Link>
           <Link
             href="/profile"
@@ -495,7 +485,7 @@ interface AdminHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps) {
+export function AdminHeader({ cartCount: _cartCount = 0, className = "" }: AdminHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.admin;
   return (
@@ -528,13 +518,8 @@ export function AdminHeader({ cartCount = 2, className = "" }: AdminHeaderProps)
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <Link href="/cart" className="flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Cart
-            {cartCount > 0 && (
-              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
           </Link>
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile
@@ -552,7 +537,7 @@ interface SuperAdminHeaderProps extends ClassNameProps {
   cartCount?: number;
 }
 
-export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHeaderProps) {
+export function SuperAdminHeader({ cartCount: _cartCount = 0, className = "" }: SuperAdminHeaderProps) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE.superAdmin;
   return (
@@ -585,13 +570,8 @@ export function SuperAdminHeader({ cartCount = 2, className = "" }: SuperAdminHe
           </nav>
         </div>
         <div className={cn("flex items-center shrink-0", GNB_RIGHT_GAP)}>
-          <Link href="/cart" className="relative flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
+          <Link href="/cart" className="flex items-center gap-1 text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Cart
-            {cartCount > 0 && (
-              <span className="min-w-[20px] h-5 rounded-full bg-[var(--primary-orange-400)] text-white text-xs font-medium flex items-center justify-center px-1.5">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
           </Link>
           <Link href="/profile" className="text_header_nav_bold gray_gray_400_t hover:!text-[var(--gray-gray-500)] transition-colors">
             Profile

@@ -229,6 +229,18 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
 
+  // Rate limit — 한 번만 대기 후 재시도
+  if (response.status === 429) {
+    const ra = response.headers.get("retry-after")
+    let waitMs = 2000
+    if (ra) {
+      const sec = Number.parseInt(ra, 10)
+      if (Number.isFinite(sec)) waitMs = Math.min(sec * 1000, 10_000)
+    }
+    await new Promise((r) => setTimeout(r, waitMs))
+    response = await doFetch()
+  }
+
   const text = await response.text()
   let json: unknown = null
   if (text) {
