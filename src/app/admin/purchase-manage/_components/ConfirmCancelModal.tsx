@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   Dialog,
@@ -15,7 +16,7 @@ interface ConfirmCancelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productSummary: string;
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
 }
 
 export function ConfirmCancelModal({
@@ -24,8 +25,16 @@ export function ConfirmCancelModal({
   productSummary,
   onConfirm,
 }: ConfirmCancelModalProps) {
+  const [rejectReason, setRejectReason] = useState("");
+  const normalizedReason = rejectReason.trim();
+
+  useEffect(() => {
+    if (open) setRejectReason("");
+  }, [open]);
+
   const handleConfirm = () => {
-    onConfirm();
+    if (!normalizedReason) return;
+    onConfirm(normalizedReason);
     onOpenChange(false);
   };
 
@@ -54,7 +63,7 @@ export function ConfirmCancelModal({
             </div>
           </div>
           <DialogTitle className="mb-6 font-[Pretendard] text-[24px] font-bold leading-[32px] text-[var(--black-black-400,#1F1F1F)]">
-            구매 요청 취소
+            구매 요청 반려
           </DialogTitle>
           <div
             className="mt-2 space-y-1 text-center font-[Pretendard] text-[20px] font-medium leading-[32px]"
@@ -62,14 +71,23 @@ export function ConfirmCancelModal({
           >
             <p>
               <span className="text-[var(--black-black-100,#6B6B6B)]">{productSummary}</span>
-              <span className="text-[var(--gray-gray-400,#ABABAB)]"> 구매 요청을 취소하시겠어요?</span>
-            </p>
-            <p className="text-[var(--gray-gray-400,#ABABAB)]">
-              구매 요청 취소 후에는 복구할 수 없어요!
+              <span className="text-[var(--gray-gray-400,#ABABAB)]"> 구매 요청을 반려하시겠어요?</span>
             </p>
           </div>
+          <div className="mt-6 w-full space-y-2">
+            <p className="text-left font-[Pretendard] text-[16px] font-semibold leading-[24px] text-[var(--black-black-400,#1F1F1F)]">
+              구매 요청 반려 이유
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="구매 요청 반려 이유를 입력해주세요."
+              rows={4}
+              className="w-full resize-none rounded-[16px] border border-[#FFD7BF] bg-white px-5 py-[14px] font-[Pretendard] text-[15px] leading-[24px] text-[var(--black-black-400,#1F1F1F)] placeholder:text-[var(--gray-gray-400,#ABABAB)] outline-none focus-visible:ring-2 focus-visible:ring-[#FF8225]/30"
+            />
+          </div>
           <DialogDescription className="sr-only">
-            {productSummary} 구매 요청을 취소하시겠어요? 구매 요청 취소 후에는 복구할 수 없어요.
+            {productSummary} 구매 요청 반려 이유를 입력한 뒤 반려할 수 있습니다.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -84,10 +102,11 @@ export function ConfirmCancelModal({
           <Button
             type="button"
             variant="solid"
+            disabled={!normalizedReason}
             className="order-2 flex !h-16 !w-[280px] shrink-0 items-center justify-center !rounded-lg !p-4 text-center font-[Pretendard] !text-[20px] !font-semibold !leading-[32px] !text-[var(--gray-gray-50,#FFF)]"
             onClick={handleConfirm}
           >
-            취소할래요
+            반려할래요
           </Button>
         </DialogFooter>
       </DialogContent>

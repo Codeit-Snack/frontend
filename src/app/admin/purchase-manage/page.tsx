@@ -26,6 +26,7 @@ import {
   type SellerOrderListItem,
 } from "./_lib/seller-order-api";
 import type { PurchaseRequestDetailItem } from "./detail/_types";
+import { getBudgetSummary } from "./_lib/budget-api";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -108,7 +109,6 @@ async function findPendingSellerOrderByRequestId(
     const response = await getSellerPurchaseOrders({
       page,
       limit: 100,
-      status: "PENDING_SELLER_APPROVAL",
     });
     totalPages = response.totalPages;
 
@@ -139,6 +139,7 @@ export default function PurchaseManagePage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [remainingBudget, setRemainingBudget] = useState<number>(0);
 
   const fetchList = useCallback(async (page: number, currentSort: PurchaseRequestSort) => {
     setLoading(true);
@@ -187,24 +188,42 @@ export default function PurchaseManagePage() {
     }
   }, []);
 
+  const fetchMonthlyRemainingBudget = useCallback(async () => {
+    const now = new Date();
+    const summary = await getBudgetSummary({
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+    });
+    const parsed = Number(summary.remainingAmount);
+    setRemainingBudget(Number.isFinite(parsed) ? parsed : 0);
+  }, []);
+
   useEffect(() => {
     void fetchList(currentPage, sort);
   }, [currentPage, sort, fetchList]);
+
+  useEffect(() => {
+    fetchMonthlyRemainingBudget().catch((error) => {
+      setErrorMessage(
+        error instanceof Error ? error.message : "남은 예산을 불러오지 못했습니다."
+      );
+    });
+  }, [fetchMonthlyRemainingBudget]);
 
   const handleCancelRequest = useCallback((item: PurchaseRequestItem) => {
     setCancelTarget(item);
     setModalOpen(true);
   }, []);
 
-  const handleConfirmCancel = useCallback(async () => {
+  const handleConfirmCancel = useCallback(async (reason: string) => {
     if (!cancelTarget || actionLoading) return;
     try {
       setActionLoading(true);
       const order = await findPendingSellerOrderByRequestId(cancelTarget.id);
       if (!order) {
-        throw new Error("반려 가능한 판매자 주문을 찾지 못했습니다.");
+        throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
       }
-      await rejectSellerPurchaseOrder({ orderId: order.id });
+      await rejectSellerPurchaseOrder({ orderId: order.id, decisionMessage: reason });
       await fetchList(currentPage, sort);
     } catch (error) {
       setErrorMessage(
@@ -316,7 +335,7 @@ export default function PurchaseManagePage() {
         }}
         requesterName={approveTarget?.requester ?? ""}
         items={approveItems}
-        remainingBudget={60000}
+        remainingBudget={remainingBudget}
         onCancel={() => {}}
         onApprove={async (message) => {
           if (!approveTarget || actionLoading) return;
@@ -324,12 +343,15 @@ export default function PurchaseManagePage() {
             setActionLoading(true);
             const order = await findPendingSellerOrderByRequestId(approveTarget.id);
             if (!order) {
-              throw new Error("승인 가능한 판매자 주문을 찾지 못했습니다.");
+              throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
             }
             await approveSellerPurchaseOrder({
               orderId: order.id,
               decisionMessage: message || undefined,
             });
+            setRemainingBudget((prev) => Math.max(0, prev - approveTarget.totalAmount));
+            setApproveModalOpen(false);
+            setApproveTarget(null);
             await fetchList(currentPage, sort);
           } catch (error) {
             setErrorMessage(

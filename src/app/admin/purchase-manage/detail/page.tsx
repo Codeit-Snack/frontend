@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
 import { Header, CONTENT_PADDING_X } from "@/components/header";
@@ -14,6 +14,15 @@ import {
   type PurchaseRequestDetailResult,
 } from "@/app/purchase-requests/_lib/api";
 import { getBudgetSummary } from "../_lib/budget-api";
+import {
+  approveSellerPurchaseOrder,
+  getSellerPurchaseOrders,
+  rejectSellerPurchaseOrder,
+  type SellerOrderListItem,
+} from "../_lib/seller-order-api";
+import { PurchaseApproveModal } from "../_components/PurchaseApproveModal";
+import { ConfirmCancelModal } from "../_components/ConfirmCancelModal";
+import type { PurchaseRequestDetailItem } from "./_types";
 
 const DEFAULT_IMAGE = "/assets/purchase_request_details/cola.png";
 
@@ -53,6 +62,28 @@ function InfoField({ label, value }: { label: string; value: string }) {
   );
 }
 
+async function findPendingSellerOrderByRequestId(
+  purchaseRequestId: number
+): Promise<SellerOrderListItem | null> {
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const response = await getSellerPurchaseOrders({
+      page,
+      limit: 100,
+    });
+    totalPages = response.totalPages;
+    const matched = response.data.find(
+      (order) => order.purchaseRequestId === purchaseRequestId
+    );
+    if (matched) return matched;
+    page += 1;
+  }
+
+  return null;
+}
+
 function PurchaseManageDetailContent() {
   const searchParams = useSearchParams();
   const device = useDevice();
@@ -64,6 +95,9 @@ function PurchaseManageDetailContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [monthlySpent, setMonthlySpent] = useState<number | null>(null);
   const [monthlyRemaining, setMonthlyRemaining] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
 
   const requestId = Number(searchParams.get("id"));
 
@@ -112,10 +146,85 @@ function PurchaseManageDetailContent() {
   );
   const canDecision =
     detail?.status === "OPEN" || detail?.status === "PARTIALLY_APPROVED";
+  const isBudgetExceeded =
+    monthlyRemaining != null && totalPrice > monthlyRemaining;
   const purchaseAfterBudget =
     detail != null && monthlyRemaining != null
       ? Math.max(0, monthlyRemaining - parseAmount(detail.totalAmount))
       : null;
+  const handleApprove = useCallback(async () => {
+    if (!detail || !canDecision || actionLoading || isBudgetExceeded) return;
+    setApproveModalOpen(true);
+  }, [actionLoading, canDecision, detail, isBudgetExceeded]);
+
+  const handleApproveWithReason = useCallback(
+    async (reason: string) => {
+      if (!detail || !canDecision || actionLoading || isBudgetExceeded) return;
+      try {
+        setActionLoading(true);
+        const order = await findPendingSellerOrderByRequestId(detail.id);
+        if (!order) {
+          throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
+        }
+        await approveSellerPurchaseOrder({
+          orderId: order.id,
+          decisionMessage: reason,
+        });
+        setMonthlyRemaining((prev) =>
+          prev == null ? prev : Math.max(0, prev - totalPrice)
+        );
+        setDetail((prev) =>
+          prev == null ? prev : { ...prev, status: "READY_TO_PURCHASE" }
+        );
+        setApproveModalOpen(false);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "요청 승인 처리에 실패했습니다."
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [actionLoading, canDecision, detail, isBudgetExceeded, totalPrice]
+  );
+
+  const handleRejectWithReason = useCallback(
+    async (reason: string) => {
+      if (!detail || !canDecision || actionLoading) return;
+      try {
+        setActionLoading(true);
+        const order = await findPendingSellerOrderByRequestId(detail.id);
+        if (!order) {
+          throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
+        }
+        await rejectSellerPurchaseOrder({
+          orderId: order.id,
+          decisionMessage: reason,
+        });
+        setDetail((prev) => (prev == null ? prev : { ...prev, status: "REJECTED" }));
+        setRejectModalOpen(false);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "요청 반려 처리에 실패했습니다."
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [actionLoading, canDecision, detail]
+  );
+
+  const approveModalItems: PurchaseRequestDetailItem[] = useMemo(() => {
+    if (!detail) return [];
+    return detail.items.map((item) => ({
+      id: String(item.id),
+      name: item.productNameSnapshot || "상품명 없음",
+      category: `판매처 #${item.sellerOrganizationId}`,
+      unitPrice: parseAmount(item.unitPriceSnapshot),
+      quantity: item.quantity,
+      imageUrl: DEFAULT_IMAGE,
+    }));
+  }, [detail]);
 
   return (
     <div className="min-h-screen background_background_400_b">
@@ -196,26 +305,33 @@ function PurchaseManageDetailContent() {
                 <Button
                   type="button"
                   variant="outlined"
-                  disabled={!canDecision}
+                  disabled={!canDecision || actionLoading}
                   className={cn(
                     "!h-14 !min-w-0 !flex-1 !rounded-[16px] !border-0 text-center text_xl_semibold xl:!h-[72px]",
                     canDecision
                       ? "!bg-[var(--gray-gray-100,#F2F2F2)] !text-[var(--gray-gray-500,#999999)] cursor-pointer"
                       : "!bg-[var(--gray-gray-100,#F2F2F2)] !text-[var(--gray-gray-300,#C4C4C4)] cursor-not-allowed"
                   )}
+                  onClick={() => {
+                    if (!canDecision || actionLoading) return;
+                    setRejectModalOpen(true);
+                  }}
                 >
                   요청 반려
                 </Button>
                 <Button
                   type="button"
                   variant="solid"
-                  disabled={!canDecision}
+                  disabled={!canDecision || actionLoading || isBudgetExceeded}
                   className={cn(
                     "!h-14 !min-w-0 !flex-1 !rounded-[16px] text-center text_xl_semibold xl:!h-[72px]",
-                    canDecision
+                    canDecision && !isBudgetExceeded
                       ? "gray_gray_50_t cursor-pointer"
                       : "!bg-[var(--gray-gray-300,#C4C4C4)] !text-white cursor-not-allowed"
                   )}
+                  onClick={() => {
+                    void handleApprove();
+                  }}
                 >
                   요청 승인
                 </Button>
@@ -286,6 +402,11 @@ function PurchaseManageDetailContent() {
                           : "계산 중"
                       }
                     />
+                    {isBudgetExceeded && (
+                      <p className="text_md_medium text-[#E53935]">
+                        구매 금액이 남은 예산을 초과합니다.
+                      </p>
+                    )}
                     <InfoField
                       label="구매후 예산"
                       value={
@@ -302,6 +423,27 @@ function PurchaseManageDetailContent() {
           )}
         </div>
       </main>
+
+      <PurchaseApproveModal
+        open={approveModalOpen}
+        onOpenChange={setApproveModalOpen}
+        requesterName={detail ? `사용자 #${detail.requesterUserId}` : ""}
+        items={approveModalItems}
+        remainingBudget={monthlyRemaining ?? 0}
+        onCancel={() => {}}
+        onApprove={(message) => {
+          void handleApproveWithReason(message);
+        }}
+      />
+
+      <ConfirmCancelModal
+        open={rejectModalOpen}
+        onOpenChange={setRejectModalOpen}
+        productSummary={detail?.items[0]?.productNameSnapshot ?? "선택한 요청"}
+        onConfirm={(reason) => {
+          void handleRejectWithReason(reason);
+        }}
+      />
     </div>
   );
 }
