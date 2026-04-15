@@ -12,3 +12,8 @@ export interface PostBudgetPeriodBody {
   month: number
   budgetAmount: number
 }
+
+/** GET /api/budget/periods?year=&month= — 단일 월 예산 */
+export interface GetBudgetPeriodResponse {
+  budgetAmount: number
+}
