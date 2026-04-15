@@ -13,10 +13,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import {
+  getBudgetPeriod,
   getMonthlyBudgetDefault,
   patchMonthlyBudgetDefault,
   postBudgetPeriod,
 } from "./_lib/api"
+
+function currentYearMonth(): { year: number; month: number } {
+  const d = new Date()
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
 
 function formatWithComma(value: string): string {
   const digits = value.replace(/\D/g, "")
@@ -42,13 +48,13 @@ export const BudgetForm = ({
   const [budgetValue, setBudgetValue] = React.useState("")
   const [startBudgetValue, setStartBudgetValue] = React.useState("")
   const [monthPickerOpen, setMonthPickerOpen] = React.useState(false)
-  const [selectedYearMonth, setSelectedYearMonth] = React.useState<{
-    year: number
-    month: number
-  } | null>(null)
+  const [selectedYearMonth, setSelectedYearMonth] = React.useState(
+    currentYearMonth,
+  )
   const [viewYear, setViewYear] = React.useState(() => new Date().getFullYear())
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
+  const budgetPeriodFetchId = React.useRef(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -67,10 +73,25 @@ export const BudgetForm = ({
   }, [])
 
   React.useEffect(() => {
+    const fetchId = ++budgetPeriodFetchId.current
+    const { year, month } = selectedYearMonth
+    getBudgetPeriod(year, month)
+      .then((data) => {
+        if (fetchId !== budgetPeriodFetchId.current) return
+        const raw = data.budgetAmount ?? 0
+        setBudgetValue(String(Math.max(0, Math.floor(raw))))
+      })
+      .catch(() => {
+        if (fetchId !== budgetPeriodFetchId.current) return
+        setBudgetValue("0")
+      })
+  }, [selectedYearMonth.year, selectedYearMonth.month])
+
+  React.useEffect(() => {
     if (monthPickerOpen) {
-      setViewYear(selectedYearMonth?.year ?? new Date().getFullYear())
+      setViewYear(selectedYearMonth.year)
     }
-  }, [monthPickerOpen, selectedYearMonth?.year])
+  }, [monthPickerOpen, selectedYearMonth.year])
 
   const isSm = size === "sm"
   const inputSizeClass = isSm ? "h-[54px] w-full text-sm" : "h-[64px] w-full text-base"
@@ -84,9 +105,7 @@ export const BudgetForm = ({
     try {
       const defaultMonthlyBudget =
         Number.parseInt(parseDigits(startBudgetValue), 10) || 0
-      const now = new Date()
-      const year = selectedYearMonth?.year ?? now.getFullYear()
-      const month = selectedYearMonth?.month ?? now.getMonth() + 1
+      const { year, month } = selectedYearMonth
       const budgetAmount = Number.parseInt(parseDigits(budgetValue), 10) || 0
       const monthlyDefaultPayload = { defaultMonthlyBudget }
       const periodPayload = { year, month, budgetAmount }
@@ -143,15 +162,14 @@ export const BudgetForm = ({
                     <Input
                       id="date-range"
                       readOnly
-                      placeholder="2026.3"
-                      value={
-                        selectedYearMonth
-                          ? formatYearMonth(
-                              selectedYearMonth.year,
-                              selectedYearMonth.month,
-                            )
-                          : ""
-                      }
+                      placeholder={formatYearMonth(
+                        new Date().getFullYear(),
+                        new Date().getMonth() + 1,
+                      )}
+                      value={formatYearMonth(
+                        selectedYearMonth.year,
+                        selectedYearMonth.month,
+                      )}
                       className={cn(
                         "h-10 w-[140px] cursor-pointer bg-white px-3 text-base shadow-xs",
                         activeInputClass,
@@ -210,7 +228,7 @@ export const BudgetForm = ({
                     <div className="grid grid-cols-3 gap-2">
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
                         const isSelected =
-                          selectedYearMonth?.year === viewYear &&
+                          selectedYearMonth.year === viewYear &&
                           selectedYearMonth.month === m
                         return (
                           <button
@@ -240,7 +258,7 @@ export const BudgetForm = ({
               placeholder=""
               value={formatWithComma(budgetValue)}
               onChange={(e) => setBudgetValue(parseDigits(e.target.value))}
-              className={cn(inputSizeClass, budgetValue.trim() && activeInputClass)}
+              className={cn(inputSizeClass, activeInputClass)}
               aria-labelledby="monthly-budget-heading"
             />
           </div>
@@ -253,7 +271,7 @@ export const BudgetForm = ({
               placeholder="3,000,000"
               value={formatWithComma(startBudgetValue)}
               onChange={(e) => setStartBudgetValue(parseDigits(e.target.value))}
-              className={cn(inputSizeClass, startBudgetValue.trim() && activeInputClass)}
+              className={cn(inputSizeClass, activeInputClass)}
             />
           </div>
         </div>
