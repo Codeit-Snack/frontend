@@ -6,7 +6,9 @@ interface ProductDetailPageProps {
   params: Promise<{ productId: string }>;
 }
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({
+  params,
+}: ProductDetailPageProps) {
   const { productId } = await params;
   const id = Number(productId);
   if (!Number.isFinite(id)) {
@@ -27,7 +29,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         >
           ← 목록으로
         </Link>
-        <h1 className="mt-6 text-2xl font-bold text-gray-900">{product.name}</h1>
+        <h1 className="mt-6 text-2xl font-bold text-gray-900">
+          {product.name}
+        </h1>
       </section>
     </main>
   );

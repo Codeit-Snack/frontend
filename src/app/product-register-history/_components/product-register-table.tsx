@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Link2 } from "lucide-react";
 import type { ProductRegistration } from "../_lib/types";
@@ -45,20 +44,18 @@ function ProductCard({ item }: { item: ProductRegistration }) {
     <article className="min-w-0">
       <div className="flex gap-3 py-3">
         <Link
-          href={`/products/${item.id}`}
+          href={`/productlist/${item.id}`}
           className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[#E0E0E0] bg-gray-100"
         >
-          <Image
+          <img
             src={item.imageUrl}
             alt=""
-            fill
-            className="object-cover"
-            sizes="64px"
+            className="h-full w-full object-cover"
           />
         </Link>
         <div className="min-w-0 flex-1">
           <Link
-            href={`/products/${item.id}`}
+            href={`/productlist/${item.id}`}
             className="text_md_semibold black_black_400_t line-clamp-2 hover:underline"
           >
             {item.name}
@@ -173,16 +170,14 @@ export function ProductRegisterTable({
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/products/${item.id}`}
+                      href={`/productlist/${item.id}`}
                       className="group flex items-center gap-3"
                     >
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                        <Image
+                        <img
                           src={item.imageUrl}
                           alt=""
-                          fill
-                          className="object-cover"
-                          sizes="48px"
+                          className="h-full w-full object-cover"
                         />
                       </div>
                       <span className="truncate text-gray-700 group-hover:text-gray-900 group-hover:underline">
