@@ -150,65 +150,42 @@ export async function completeSellerPurchaseOrder(params: {
   orderId: number;
   shippingFee?: string;
 }): Promise<unknown> {
-  const defaultBody = {
-    ...(params.shippingFee ? { shippingFee: params.shippingFee } : {}),
-  };
-
-  const candidates: Array<{
-    path: string;
-    method: "POST" | "PATCH";
-    body: Record<string, unknown>;
-  }> = [
+  const payload = await requestApi<unknown>(
+    `/api/seller/purchase-orders/${params.orderId}/record-purchase`,
     {
-      path: `/api/seller/purchase-orders/${params.orderId}/purchase`,
       method: "POST",
-      body: defaultBody,
-    },
-    {
-      path: `/api/seller/purchase-orders/${params.orderId}/purchase`,
-      method: "PATCH",
-      body: defaultBody,
-    },
-    {
-      path: `/api/seller/purchase-orders/${params.orderId}/purchased`,
-      method: "POST",
-      body: defaultBody,
-    },
-    {
-      path: `/api/seller/purchase-orders/${params.orderId}/complete`,
-      method: "POST",
-      body: defaultBody,
-    },
-    {
-      path: `/api/seller/purchase-orders/${params.orderId}/completed`,
-      method: "POST",
-      body: defaultBody,
-    },
-    {
-      path: `/api/seller/purchase-orders/${params.orderId}/status`,
-      method: "PATCH",
-      body: {
-        status: "PURCHASED",
-        ...defaultBody,
-      },
-    },
-  ];
-
-  let lastError: Error | null = null;
-  for (const candidate of candidates) {
-    try {
-      const payload = await requestApi<unknown>(candidate.path, {
-        method: candidate.method,
-        body: JSON.stringify(candidate.body),
-      });
-      return getDataPayload(payload);
-    } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error
-          : new Error("구매 완료 처리 API 요청에 실패했습니다.");
+      body: JSON.stringify({
+        platform: "OTHER",
+        note: "관리자 승인 처리",
+        ...(params.shippingFee ? { shippingFee: params.shippingFee } : {}),
+      }),
     }
-  }
+  );
+  return getDataPayload(payload);
+}
 
-  throw lastError ?? new Error("구매 완료 처리 API를 찾을 수 없습니다.");
+export async function createExpenseFromSellerOrder(params: {
+  orderId: number;
+  itemsAmount: number;
+  shippingAmount?: number;
+  note?: string;
+}): Promise<unknown | null> {
+  try {
+    const payload = await requestApi<unknown>("/api/expenses", {
+      method: "POST",
+      body: JSON.stringify({
+        purchaseOrderId: params.orderId,
+        itemsAmount: params.itemsAmount,
+        shippingAmount: params.shippingAmount ?? 0,
+        ...(params.note ? { note: params.note } : {}),
+      }),
+    });
+    return getDataPayload(payload);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "지출 생성에 실패했습니다.";
+    // 이미 지출이 등록된 주문은 승인 플로우를 막지 않습니다.
+    if (message.includes("이미 등록")) return null;
+    throw error;
+  }
 }
