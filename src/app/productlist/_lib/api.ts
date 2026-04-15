@@ -1,4 +1,6 @@
 import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants"
+import { notifyCartLineCountChanged } from "@/lib/cart/events"
+import { findCartLineIdForProduct, pickCartItemList } from "@/lib/cart/payload"
 import { API_BASE_URL } from "@/lib/env"
 import type {
   CatalogCategory,
@@ -38,6 +40,31 @@ function getAccessToken(): string | null {
     localStorage.getItem("token") ??
     localStorage.getItem("authToken")
   )
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split(".")[1]
+    if (!part) return null
+    const normalized = part.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")
+    return JSON.parse(atob(padded)) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function resolveOrganizationIdFromToken(token: string | null): string | null {
+  if (!token) return null
+  const payload = decodeJwtPayload(token)
+  const raw =
+    payload?.organizationId ??
+    payload?.organization_id ??
+    payload?.orgId ??
+    payload?.org_id
+  if (raw === undefined || raw === null) return null
+  const value = String(raw).trim()
+  return value.length > 0 ? value : null
 }
 
 function parseErrorMessage(payload: unknown, fallback: string) {
@@ -547,16 +574,106 @@ export async function deleteProduct(productId: number): Promise<void> {
 }
 
 /**
- * 장바구니 담기. 장바구니 **조회**는 [frontend/src/app/cart/page.tsx](frontend/src/app/cart/page.tsx) 등과
- * URL·응답 형식을 맞출 필요가 있음(현재 일부 화면은 동일 출처 `/api/cart` 사용).
+ * 장바구니 담기 — 상세에서 고른 수량이 그대로 반영되도록,
+ * 이미 같은 상품이 담겨 있으면 `PATCH`로 수량을 **덮어쓰고**, 없으면 `POST`로 추가.
+ * (백엔드가 POST 시 누적만 하면 1개 추가가 기존 4개에 더해져 5로 보이는 문제를 막음)
  */
 export async function addCartItem(productId: number, quantity: number): Promise<void> {
   if (!Number.isFinite(productId) || productId <= 0) {
     throw new Error("유효하지 않은 상품입니다.")
   }
   const qty = Math.min(99, Math.max(1, Math.floor(quantity)))
-  await requestApi<unknown>("/api/cart/items", {
-    method: "POST",
-    body: JSON.stringify({ productId, quantity: qty }),
-  })
+  const token = getAccessToken()?.trim()
+  if (!token) {
+    throw new Error("로그인이 필요합니다.")
+  }
+  const orgId = resolveOrganizationIdFromToken(token)
+
+  const authHeaders: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(orgId ? { "X-Organization-Id": orgId } : {}),
+  }
+
+  const jsonHeaders: Record<string, string> = {
+    ...authHeaders,
+    "Content-Type": "application/json",
+  }
+
+  try {
+    const getRes = await fetch("/api/cart", {
+      credentials: "include",
+      headers: authHeaders,
+    })
+    if (getRes.ok) {
+      const data: unknown = await getRes.json()
+      const rows = pickCartItemList(data)
+      const lineId = findCartLineIdForProduct(rows, productId)
+      if (lineId) {
+        const patchRes = await fetch(`/api/cart/items/${encodeURIComponent(lineId)}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: jsonHeaders,
+          body: JSON.stringify({ quantity: qty }),
+        })
+        const text = await patchRes.text()
+        let json: unknown = null
+        if (text) {
+          try {
+            json = JSON.parse(text) as unknown
+          } catch {
+            json = text
+          }
+        }
+        if (!patchRes.ok) {
+          throw new ApiError(
+            patchRes.status,
+            parseErrorMessage(json, "요청 처리에 실패했습니다."),
+          )
+        }
+        notifyCartLineCountChanged()
+        return
+      }
+    }
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetch("/api/cart/items", {
+      method: "POST",
+      credentials: "include",
+      signal: controller.signal,
+      headers: jsonHeaders,
+      body: JSON.stringify({ productId, quantity: qty }),
+    })
+  } catch (error) {
+    clearTimeout(timeout)
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.")
+    }
+    throw new Error("네트워크 오류가 발생했습니다. 연결 상태를 확인해주세요.")
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  const text = await response.text()
+  let json: unknown = null
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown
+    } catch {
+      json = text
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      parseErrorMessage(json, "요청 처리에 실패했습니다."),
+    )
+  }
+  notifyCartLineCountChanged()
 }

@@ -18,6 +18,7 @@ interface CartItemData {
 
 interface CartItemListProps {
   items: CartItemData[];
+  requesterName: string;
   allChecked: boolean;
   onToggleAll: () => void;
   onToggleItem: (id: string) => void;
@@ -30,6 +31,7 @@ interface CartItemListProps {
 
 export default function CartItemList({
   items,
+  requesterName,
   allChecked,
   onToggleAll,
   onToggleItem,
@@ -80,6 +82,7 @@ export default function CartItemList({
           <CartItem
             key={item.id}
             {...item}
+            requesterName={requesterName}
             onToggle={onToggleItem}
             onQuantityChange={onQuantityChange}
             onDelete={onDeleteItem}
