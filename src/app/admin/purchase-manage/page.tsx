@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
@@ -21,6 +22,7 @@ import {
 } from "@/app/purchase-requests/_lib/api";
 import {
   approveSellerPurchaseOrder,
+  completeSellerPurchaseOrder,
   getSellerPurchaseOrders,
   rejectSellerPurchaseOrder,
   type SellerOrderListItem,
@@ -33,7 +35,7 @@ const ITEMS_PER_PAGE = 6;
 const STATUS_MAP: Record<PurchaseRequestListItem["status"], PurchaseRequestItem["status"]> = {
   OPEN: "pending",
   PARTIALLY_APPROVED: "pending",
-  READY_TO_PURCHASE: "pending",
+  READY_TO_PURCHASE: "approved",
   REJECTED: "rejected",
   CANCELED: "rejected",
   PURCHASED: "approved",
@@ -251,11 +253,10 @@ export default function PurchaseManagePage() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header
+      <HeaderWithCart
         device={device}
         isLoggedIn={isLoggedIn}
         role={role}
-        cartCount={2}
       />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
@@ -349,7 +350,10 @@ export default function PurchaseManagePage() {
               orderId: order.id,
               decisionMessage: message || undefined,
             });
-            setRemainingBudget((prev) => Math.max(0, prev - approveTarget.totalAmount));
+            await completeSellerPurchaseOrder({
+              orderId: order.id,
+            });
+            await fetchMonthlyRemainingBudget();
             setApproveModalOpen(false);
             setApproveTarget(null);
             await fetchList(currentPage, sort);

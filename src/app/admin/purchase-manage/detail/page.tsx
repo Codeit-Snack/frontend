@@ -3,7 +3,8 @@
 import { Suspense, useMemo, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { Button } from "@/components/ui/button";
 import { useDevice } from "@/hooks/use-device";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -16,6 +17,7 @@ import {
 import { getBudgetSummary } from "../_lib/budget-api";
 import {
   approveSellerPurchaseOrder,
+  completeSellerPurchaseOrder,
   getSellerPurchaseOrders,
   rejectSellerPurchaseOrder,
   type SellerOrderListItem,
@@ -29,7 +31,7 @@ const DEFAULT_IMAGE = "/assets/purchase_request_details/cola.png";
 const STATUS_LABEL: Record<PurchaseRequestDetailResult["status"], string> = {
   OPEN: "승인 대기",
   PARTIALLY_APPROVED: "부분 승인",
-  READY_TO_PURCHASE: "구매 준비",
+  READY_TO_PURCHASE: "구매 승인",
   REJECTED: "구매 반려",
   CANCELED: "요청 취소",
   PURCHASED: "구매 완료",
@@ -101,6 +103,16 @@ function PurchaseManageDetailContent() {
 
   const requestId = Number(searchParams.get("id"));
 
+  const fetchCurrentMonthBudgetSummary = useCallback(async () => {
+    const now = new Date();
+    const budgetData = await getBudgetSummary({
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+    });
+    setMonthlySpent(parseAmount(budgetData.spentAmount));
+    setMonthlyRemaining(parseAmount(budgetData.remainingAmount));
+  }, []);
+
   useEffect(() => {
     if (!Number.isFinite(requestId) || requestId <= 0) {
       setErrorMessage("잘못된 접근입니다. 요청 ID를 확인해주세요.");
@@ -110,18 +122,12 @@ function PurchaseManageDetailContent() {
 
     setLoading(true);
     setErrorMessage("");
-    const now = new Date();
     Promise.all([
       getPurchaseRequestDetail(requestId),
-      getBudgetSummary({
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
-      }),
+      fetchCurrentMonthBudgetSummary(),
     ])
-      .then(([detailData, budgetData]) => {
+      .then(([detailData]) => {
         setDetail(detailData);
-        setMonthlySpent(parseAmount(budgetData.spentAmount));
-        setMonthlyRemaining(parseAmount(budgetData.remainingAmount));
       })
       .catch((error) =>
         setErrorMessage(
@@ -129,7 +135,7 @@ function PurchaseManageDetailContent() {
         )
       )
       .finally(() => setLoading(false));
-  }, [requestId]);
+  }, [fetchCurrentMonthBudgetSummary, requestId]);
 
   const useAccordion = !isDesktop;
   const totalCount = useMemo(
@@ -170,11 +176,12 @@ function PurchaseManageDetailContent() {
           orderId: order.id,
           decisionMessage: reason,
         });
-        setMonthlyRemaining((prev) =>
-          prev == null ? prev : Math.max(0, prev - totalPrice)
-        );
+        await completeSellerPurchaseOrder({
+          orderId: order.id,
+        });
+        await fetchCurrentMonthBudgetSummary();
         setDetail((prev) =>
-          prev == null ? prev : { ...prev, status: "READY_TO_PURCHASE" }
+          prev == null ? prev : { ...prev, status: "PURCHASED" }
         );
         setApproveModalOpen(false);
       } catch (error) {
@@ -185,7 +192,7 @@ function PurchaseManageDetailContent() {
         setActionLoading(false);
       }
     },
-    [actionLoading, canDecision, detail, isBudgetExceeded, totalPrice]
+    [actionLoading, canDecision, detail, fetchCurrentMonthBudgetSummary, isBudgetExceeded]
   );
 
   const handleRejectWithReason = useCallback(
@@ -228,7 +235,7 @@ function PurchaseManageDetailContent() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn role="admin" cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn role="admin" />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">

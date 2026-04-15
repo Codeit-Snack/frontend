@@ -3,7 +3,8 @@
 import { Suspense, useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronUp } from "lucide-react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { Button } from "@/components/ui/button";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
@@ -18,7 +19,7 @@ const DEFAULT_IMAGE = "/assets/purchase_request_details/cola.png";
 const STATUS_LABEL: Record<PurchaseRequestDetailResult["status"], string> = {
   OPEN: "승인 대기",
   PARTIALLY_APPROVED: "부분 승인",
-  READY_TO_PURCHASE: "구매 준비",
+  READY_TO_PURCHASE: "승인 완료",
   REJECTED: "구매 반려",
   CANCELED: "요청 취소",
   PURCHASED: "구매 완료",
@@ -128,7 +129,7 @@ function PurchaseRequestDetailContent() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn={isLoggedIn} role={role} cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn={isLoggedIn} role={role} />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">

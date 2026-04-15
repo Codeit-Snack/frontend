@@ -7,6 +7,10 @@ import { Header } from "@/components/header";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import CartComplete from "@/components/cart/cart-complete";
 import { useDevice } from "@/hooks/use-device";
+import { useRequesterDisplayName } from "@/hooks/use-requester-display-name";
+import { buildCartAuthHeaders } from "@/lib/cart/auth-headers";
+import { notifyCartLineCountChanged } from "@/lib/cart/events";
+import { parseLineQuantity, pickCartItemList } from "@/lib/cart/payload";
 
 interface CartItemData {
   id: string;
@@ -19,32 +23,62 @@ interface CartItemData {
   checked: boolean;
 }
 
+function mapCartRow(item: unknown): CartItemData | null {
+  if (!item || typeof item !== "object") return null;
+  const row = item as Record<string, unknown>;
+  const id = String(row.id ?? row.cartItemId ?? row.lineId ?? "").trim();
+  if (!id) return null;
+  const product =
+    row.product && typeof row.product === "object"
+      ? (row.product as Record<string, unknown>)
+      : row;
+  return {
+    id,
+    image: String(product.imageKey ?? product.image ?? ""),
+    category: String(product.categoryId ?? product.category ?? ""),
+    name: String(product.name ?? product.productName ?? ""),
+    price: Number(product.price ?? product.unitPrice ?? 0),
+    quantity: parseLineQuantity(row),
+    shipping: 3000,
+    checked: true,
+  };
+}
+
 export default function CartPage() {
   const { isLoggedIn, role } = useAuthHeader();
   const [items, setItems] = useState<CartItemData[]>([]);
   const [showComplete, setShowComplete] = useState(false);
   const [completeMessage, setCompleteMessage] = useState("");
   const device = useDevice();
+  const requesterName = useRequesterDisplayName();
 
   useEffect(() => {
     const fetchCart = async () => {
       try {
-        const res = await fetch("/api/cart", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const mapped: CartItemData[] = (data.items ?? []).map((item: any) => ({
-          id: String(item.id),
-          image: item.product?.imageKey ?? "",
-          category: String(item.product?.categoryId ?? ""),
-          name: item.product?.name ?? "",
-          price: Number(item.product?.price ?? 0),
-          quantity: item.quantity,
-          shipping: 3000,
-          checked: true,
-        }));
+        const auth = buildCartAuthHeaders();
+        if (!auth.Authorization) {
+          setItems([]);
+          notifyCartLineCountChanged();
+          return;
+        }
+        const res = await fetch("/api/cart", {
+          credentials: "include",
+          headers: auth,
+        });
+        if (!res.ok) {
+          setItems([]);
+          notifyCartLineCountChanged();
+          return;
+        }
+        const data: unknown = await res.json();
+        const rows = pickCartItemList(data);
+        const mapped = rows.map(mapCartRow).filter((v): v is CartItemData => v !== null);
         setItems(mapped);
+        notifyCartLineCountChanged();
       } catch (e) {
         console.error("장바구니 조회 실패", e);
+        setItems([]);
+        notifyCartLineCountChanged();
       }
     };
     fetchCart();
@@ -70,12 +104,14 @@ export default function CartPage() {
   const toggleItem = (id: string) => setItems((prev) => prev.map((item) => item.id === id ? { ...item, checked: !item.checked } : item));
 
   const deleteAll = async () => {
+    const auth = buildCartAuthHeaders();
     try {
       await Promise.all(
         items.map((item) =>
-          fetch(`/api/cart/items/${item.id}`, {
+          fetch(`/api/cart/items/${encodeURIComponent(item.id)}`, {
             method: "DELETE",
             credentials: "include",
+            headers: auth,
           })
         )
       );
@@ -83,16 +119,19 @@ export default function CartPage() {
       console.error("전체 삭제 실패", e);
     }
     setItems([]);
+    notifyCartLineCountChanged();
   };
 
   const deleteSelected = async () => {
     const selectedItems = items.filter((item) => item.checked);
+    const auth = buildCartAuthHeaders();
     try {
       await Promise.all(
         selectedItems.map((item) =>
-          fetch(`/api/cart/items/${item.id}`, {
+          fetch(`/api/cart/items/${encodeURIComponent(item.id)}`, {
             method: "DELETE",
             credentials: "include",
+            headers: auth,
           })
         )
       );
@@ -100,18 +139,22 @@ export default function CartPage() {
       console.error("선택 삭제 실패", e);
     }
     setItems((prev) => prev.filter((item) => !item.checked));
+    notifyCartLineCountChanged();
   };
 
   const deleteItem = async (id: string) => {
+    const auth = buildCartAuthHeaders();
     try {
-      await fetch(`/api/cart/items/${id}`, {
+      await fetch(`/api/cart/items/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "include",
+        headers: auth,
       });
     } catch (e) {
       console.error("삭제 실패", e);
     }
     setItems((prev) => prev.filter((item) => item.id !== id));
+    notifyCartLineCountChanged();
   };
 
   const changeQuantity = async (id: string, quantity: number) => {
@@ -119,10 +162,13 @@ export default function CartPage() {
       prev.map((item) => item.id === id ? { ...item, quantity } : item)
     );
     try {
-      await fetch(`/api/cart/items/${id}`, {
+      await fetch(`/api/cart/items/${encodeURIComponent(id)}`, {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...buildCartAuthHeaders(),
+        },
         body: JSON.stringify({ quantity }),
       });
     } catch (e) {
@@ -140,6 +186,7 @@ export default function CartPage() {
         onBack={() => {
           setItems((prev) => prev.filter((item) => !item.checked));
           setShowComplete(false);
+          notifyCartLineCountChanged();
         }}
       />
     );
@@ -158,6 +205,7 @@ export default function CartPage() {
         <div className="flex flex-col lg:flex-row gap-4">
           <CartItemList
             items={items}
+            requesterName={requesterName}
             allChecked={allChecked}
             onToggleAll={toggleAll}
             onToggleItem={toggleItem}
@@ -177,6 +225,7 @@ export default function CartPage() {
             totalPrice={totalPrice}
             totalCount={totalCount}
             requestItems={requestItems}
+            requesterName={requesterName}
             onComplete={(message) => {
               setCompleteMessage(message);
               setShowComplete(true);

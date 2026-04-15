@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { Header, CONTENT_PADDING_X } from "@/components/header";
+import { CONTENT_PADDING_X } from "@/components/header";
+import { HeaderWithCart } from "@/components/header/header-with-cart";
 import { useAuthHeader } from "@/hooks/use-auth-header";
 import { useDevice } from "@/hooks/use-device";
 import Pagination from "@/components/ui/pagination";
@@ -50,6 +51,40 @@ function getPreviousCalendarMonth(year: number, month: number): {
 } {
   const d = new Date(year, month - 2, 1);
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+function ymKey(year: number, month: number): string {
+  return `${year}-${month}`;
+}
+
+/** 월별 지출을 중복 없이 순차 호출해 429(과다 요청)를 줄입니다. */
+async function fetchMonthlyExpensesUniqueSequential(
+  pairs: { year: number; month: number }[],
+  opts: { delayMs: number; isCancelled: () => boolean }
+): Promise<Map<string, number | null>> {
+  const unique = new Map<string, { year: number; month: number }>();
+  for (const p of pairs) {
+    unique.set(ymKey(p.year, p.month), p);
+  }
+  const sorted = [...unique.values()].sort((a, b) =>
+    a.year !== b.year ? a.year - b.year : a.month - b.month
+  );
+  const out = new Map<string, number | null>();
+  for (let i = 0; i < sorted.length; i++) {
+    if (opts.isCancelled()) return out;
+    const p = sorted[i]!;
+    const key = ymKey(p.year, p.month);
+    try {
+      const v = await fetchMonthlyExpensesTotal(p);
+      out.set(key, v);
+    } catch {
+      out.set(key, null);
+    }
+    if (opts.delayMs > 0 && i < sorted.length - 1) {
+      await new Promise((r) => setTimeout(r, opts.delayMs));
+    }
+  }
+  return out;
 }
 
 function formatDate(value: unknown): string {
@@ -351,27 +386,60 @@ export default function PurchaseHistoryPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const isCancelled = () => cancelled;
+
     (async () => {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
+      const prev = getPreviousCalendarMonth(year, month);
 
       setMonthlyExpenseReady(false);
       setSummaryFinanceReady(false);
+      setYearExpenseReady(false);
       setBudgetSummaryError(null);
       setMonthlyExpenseError(null);
+      setYearExpenseError(null);
+      setYtdExpenseThisYear(null);
+      setYtdExpenseLastYear(null);
       setLastMonthRemaining(null);
       setLastMonthExpenseAmount(null);
 
-      const prev = getPreviousCalendarMonth(year, month);
+      const expensePairs: { year: number; month: number }[] = [];
+      for (let m = 1; m <= month; m++) {
+        expensePairs.push({ year, month: m });
+        expensePairs.push({ year: year - 1, month: m });
+      }
+      expensePairs.push(prev);
 
-      const [budgetOutcome, expenseOutcome, budgetLastOutcome, expenseLastOutcome] =
-        await Promise.allSettled([
-          getBudgetSummary({ year, month }),
-          fetchMonthlyExpensesTotal({ year, month }),
-          getBudgetSummary(prev),
-          fetchMonthlyExpensesTotal(prev),
-        ]);
+      const expenseMap = await fetchMonthlyExpensesUniqueSequential(expensePairs, {
+        delayMs: 120,
+        isCancelled,
+      });
+      if (cancelled) return;
+
+      const getExp = (y: number, m: number) => expenseMap.get(ymKey(y, m)) ?? null;
+
+      setMonthlyExpenseAmount(getExp(year, month));
+      setMonthlyExpenseError(null);
+      setLastMonthExpenseAmount(getExp(prev.year, prev.month));
+
+      let sumThis = 0;
+      for (let m = 1; m <= month; m++) {
+        sumThis += getExp(year, m) ?? 0;
+      }
+      let sumLast = 0;
+      for (let m = 1; m <= month; m++) {
+        sumLast += getExp(year - 1, m) ?? 0;
+      }
+      setYtdExpenseThisYear(sumThis);
+      setYtdExpenseLastYear(sumLast);
+      setYearExpenseError(null);
+
+      const [budgetOutcome, budgetLastOutcome] = await Promise.allSettled([
+        getBudgetSummary({ year, month }),
+        getBudgetSummary(prev),
+      ]);
 
       if (cancelled) return;
 
@@ -389,32 +457,10 @@ export default function PurchaseHistoryPage() {
         );
       }
 
-      if (expenseOutcome.status === "fulfilled") {
-        setMonthlyExpenseAmount(expenseOutcome.value);
-        setMonthlyExpenseError(null);
-      } else {
-        setMonthlyExpenseAmount(null);
-        const reason = expenseOutcome.reason;
-        setMonthlyExpenseError(
-          reason instanceof Error
-            ? reason.message
-            : "이번 달 지출을 불러오지 못했습니다."
-        );
-      }
-
-      if (expenseLastOutcome.status === "fulfilled") {
-        setLastMonthExpenseAmount(expenseLastOutcome.value);
-      } else {
-        setLastMonthExpenseAmount(null);
-      }
-
       let remLast: number | null = null;
-      if (
-        budgetLastOutcome.status === "fulfilled" &&
-        expenseLastOutcome.status === "fulfilled"
-      ) {
+      if (budgetLastOutcome.status === "fulfilled") {
         const capLast = Number(budgetLastOutcome.value.budgetAmount);
-        const expLast = expenseLastOutcome.value;
+        const expLast = getExp(prev.year, prev.month);
         if (Number.isFinite(capLast) && expLast !== null) {
           remLast = capLast - expLast;
         }
@@ -423,57 +469,9 @@ export default function PurchaseHistoryPage() {
 
       setMonthlyExpenseReady(true);
       setSummaryFinanceReady(true);
+      setYearExpenseReady(true);
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
-  /** 올해 1월~당월 지출 합계 + 작년 동기간 합(비교용) */
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const now = new Date();
-      const y = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
-      const months = Array.from({ length: currentMonth }, (_, i) => i + 1);
-
-      setYearExpenseReady(false);
-      setYearExpenseError(null);
-      setYtdExpenseThisYear(null);
-      setYtdExpenseLastYear(null);
-
-      try {
-        const [thisYearParts, lastYearParts] = await Promise.all([
-          Promise.all(
-            months.map((m) =>
-              fetchMonthlyExpensesTotal({ year: y, month: m }).catch(() => null)
-            )
-          ),
-          Promise.all(
-            months.map((m) =>
-              fetchMonthlyExpensesTotal({ year: y - 1, month: m }).catch(() => null)
-            )
-          ),
-        ]);
-        if (cancelled) return;
-        const sumThis = thisYearParts.reduce<number>((acc, v) => acc + (v ?? 0), 0);
-        const sumLast = lastYearParts.reduce<number>((acc, v) => acc + (v ?? 0), 0);
-        setYtdExpenseThisYear(sumThis);
-        setYtdExpenseLastYear(sumLast);
-        setYearExpenseError(null);
-      } catch (e) {
-        if (!cancelled) {
-          setYtdExpenseThisYear(null);
-          setYtdExpenseLastYear(null);
-          setYearExpenseError(
-            e instanceof Error ? e.message : "올해 지출 합계를 불러오지 못했습니다."
-          );
-        }
-      } finally {
-        if (!cancelled) setYearExpenseReady(true);
-      }
-    })();
     return () => {
       cancelled = true;
     };
@@ -481,7 +479,7 @@ export default function PurchaseHistoryPage() {
 
   return (
     <div className="min-h-screen background_background_400_b">
-      <Header device={device} isLoggedIn={isLoggedIn} role={role} cartCount={2} />
+      <HeaderWithCart device={device} isLoggedIn={isLoggedIn} role={role} />
 
       <main className={cn(CONTENT_PADDING_X, "pb-12 pt-3.5 md:pt-10")}>
         <div className="mx-auto w-full max-w-[1680px]">
