@@ -83,7 +83,7 @@ export function ProductListHeader({
 
         <div ref={containerRef} className="relative shrink-0 self-end md:self-auto">
           <Sort
-            size="sm"
+            size="md"
             label={sortLabel}
             onClick={() => setOpen((prev) => !prev)}
             aria-expanded={open}
@@ -93,7 +93,7 @@ export function ProductListHeader({
           {open && (
             <div
               role="menu"
-              className="absolute right-0 z-10 mt-2 w-[180px] overflow-hidden rounded-2xl border border-[#E6E6E6] bg-white py-2 text-[#9F9F9F] shadow-sm"
+              className="absolute right-0 z-10 mt-2 w-[136px] overflow-hidden rounded-2xl border border-[#E6E6E6] bg-white py-1 shadow-sm"
             >
               {sortOptions.map((option) => (
                 <button
@@ -104,11 +104,12 @@ export function ProductListHeader({
                     onSelectSort(option.value)
                     setOpen(false)
                   }}
-                  className={`w-full whitespace-nowrap px-3 py-2 text-left text-[14px] leading-tight transition-colors hover:bg-[#F6F6F6] ${
+                  className={cn(
+                    "w-full px-2 py-2 text-center font-[Pretendard] text-[18px] font-normal leading-[26px] text-[var(--gray-gray-500,#999)] transition-colors hover:bg-[#F6F6F6]",
                     option.value === selectedSort
                       ? "bg-[#F6F6F6] font-semibold text-[#37352f]"
-                      : ""
-                  }`}
+                      : "",
+                  )}
                 >
                   {option.label}
                 </button>

@@ -31,7 +31,7 @@ export function ProductListProductCard({
       <div className="flex min-h-0 flex-col bg-transparent min-[431px]:min-h-0 min-[431px]:flex-1">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="min-w-0 truncate text-xs text-gray-500 min-[431px]:text-sm">{category}</span>
-          <span className="shrink-0 rounded-none bg-[#FDF0DF] px-2 py-0.5 text-[10px] font-medium text-[#E5762C] min-[431px]:px-3 min-[431px]:py-1 min-[431px]:text-xs">
+          <span className="shrink-0 rounded-none bg-[#FDF0DF] px-2 py-1 font-[Pretendard] text-[16px] font-semibold leading-[26px] text-[var(--primary-orange-400,#F97B22)]">
             {purchaseCount}회 구매
           </span>
         </div>
