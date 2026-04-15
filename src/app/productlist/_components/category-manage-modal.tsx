@@ -16,14 +16,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import {
   ApiError,
   createCategory,
   deleteCategory,
   updateCategory,
 } from "../_lib/api"
-import type { CatalogCategory } from "../_lib/types"
+import type { CatalogCategory, UpdateCategoryInput } from "../_lib/types"
 
 type Level = "main" | "sub"
 
@@ -34,6 +34,24 @@ interface CategoryManageModalProps {
   onOpenChange: (open: boolean) => void
   catalogRows: CatalogCategory[]
   onSuccess?: () => void
+}
+
+function sameParentGroup(
+  a: CatalogCategory,
+  b: CatalogCategory,
+): boolean {
+  return (a.parentId ?? null) === (b.parentId ?? null)
+}
+
+function siblingsOf(
+  rows: CatalogCategory[],
+  row: CatalogCategory,
+): CatalogCategory[] {
+  return rows
+    .filter((c) => sameParentGroup(c, row))
+    .sort(
+      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id,
+    )
 }
 
 function buildListRows(rows: CatalogCategory[]): ListRow[] {
@@ -70,9 +88,11 @@ export function CategoryManageModal({
   const [editParentId, setEditParentId] = useState<number | null>(null)
   const [editSortOrder, setEditSortOrder] = useState("")
   const [editIsActive, setEditIsActive] = useState(true)
+  const [advancedSortOpen, setAdvancedSortOpen] = useState(false)
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [manageError, setManageError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [reorderingId, setReorderingId] = useState<number | null>(null)
 
   const roots = useMemo(
     () =>
@@ -106,6 +126,7 @@ export function CategoryManageModal({
     setEditParentId(null)
     setEditSortOrder("")
     setEditIsActive(true)
+    setAdvancedSortOpen(false)
     setManageError(null)
   }, [])
 
@@ -129,18 +150,22 @@ export function CategoryManageModal({
     cancelEdit()
   }, [onOpenChange, resetAddForm, cancelEdit])
 
-  const startEdit = useCallback(
-    (row: CatalogCategory) => {
-      setManageError(null)
-      setSubmitError(null)
-      setEditingId(row.id)
-      setEditName(row.name)
-      setEditParentId(row.parentId)
-      setEditSortOrder(String(row.sortOrder ?? 0))
-      setEditIsActive(row.isActive ?? true)
-    },
-    [],
-  )
+  const startEdit = useCallback((row: CatalogCategory) => {
+    setManageError(null)
+    setSubmitError(null)
+    setEditingId(row.id)
+    setEditName(row.name)
+    setEditParentId(row.parentId)
+    setEditSortOrder(String(row.sortOrder ?? 0))
+    setEditIsActive(row.isActive ?? true)
+    setAdvancedSortOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (editingId == null) return
+    const row = catalogRows.find((c) => c.id === editingId)
+    if (row) setEditSortOrder(String(row.sortOrder ?? 0))
+  }, [catalogRows, editingId])
 
   const handleAdd = async () => {
     setSubmitError(null)
@@ -184,6 +209,44 @@ export function CategoryManageModal({
     }
   }
 
+  const handleMoveRow = async (
+    row: CatalogCategory,
+    direction: "up" | "down",
+  ) => {
+    const siblings = siblingsOf(catalogRows, row)
+    const i = siblings.findIndex((c) => c.id === row.id)
+    if (i < 0) return
+    const j = direction === "up" ? i - 1 : i + 1
+    if (j < 0 || j >= siblings.length) return
+
+    setManageError(null)
+    setReorderingId(row.id)
+    try {
+      const reordered = [...siblings]
+      const tmp = reordered[i]!
+      reordered[i] = reordered[j]!
+      reordered[j] = tmp
+      await Promise.all(
+        reordered.map((cat, idx) =>
+          updateCategory(cat.id, { sortOrder: idx }),
+        ),
+      )
+      onSuccess?.()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) {
+        setManageError("수정 권한이 없습니다. (관리자 이상 필요)")
+      } else if (e instanceof ApiError) {
+        setManageError(e.message)
+      } else {
+        setManageError(
+          e instanceof Error ? e.message : "순서 변경에 실패했습니다.",
+        )
+      }
+    } finally {
+      setReorderingId(null)
+    }
+  }
+
   const handleSaveEdit = async () => {
     if (editingId == null) return
     setManageError(null)
@@ -192,20 +255,23 @@ export function CategoryManageModal({
       setManageError("카테고리 이름을 입력해주세요.")
       return
     }
-    const soRaw = editSortOrder.trim()
-    const sortOrder =
-      soRaw === "" || !Number.isFinite(Number(soRaw))
-        ? 0
-        : Math.max(0, Math.floor(Number(soRaw)))
+
+    const patch: UpdateCategoryInput = {
+      name: trimmed,
+      parentId: editParentId,
+      isActive: editIsActive,
+    }
+    if (advancedSortOpen) {
+      const soRaw = editSortOrder.trim()
+      patch.sortOrder =
+        soRaw === "" || !Number.isFinite(Number(soRaw))
+          ? 0
+          : Math.max(0, Math.floor(Number(soRaw)))
+    }
 
     setEditSubmitting(true)
     try {
-      await updateCategory(editingId, {
-        name: trimmed,
-        parentId: editParentId,
-        sortOrder,
-        isActive: editIsActive,
-      })
+      await updateCategory(editingId, patch)
       onSuccess?.()
       cancelEdit()
     } catch (e) {
@@ -356,7 +422,10 @@ export function CategoryManageModal({
                 className="h-[50px] w-full rounded-[12px]"
                 onClick={() => void handleAdd()}
                 disabled={
-                  submitting || editSubmitting || deletingId !== null
+                  submitting ||
+                  editSubmitting ||
+                  deletingId !== null ||
+                  reorderingId !== null
                 }
               >
                 추가하기
@@ -380,7 +449,12 @@ export function CategoryManageModal({
               </p>
             ) : (
               <ul className="divide-y divide-gray-100 rounded-[12px] border border-gray-200">
-                {listRows.map(({ row, depth }) => (
+                {listRows.map(({ row, depth }) => {
+                  const sibs = siblingsOf(catalogRows, row)
+                  const si = sibs.findIndex((c) => c.id === row.id)
+                  const canUp = si > 0
+                  const canDown = si >= 0 && si < sibs.length - 1
+                  return (
                   <li key={row.id}>
                     <div
                       className={cn(
@@ -396,7 +470,41 @@ export function CategoryManageModal({
                           {row.parentId == null ? "대분류" : "소분류"}
                         </span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
+                          <button
+                            type="button"
+                            className="inline-flex size-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-30"
+                            aria-label="위로 이동"
+                            title="같은 그룹에서 위로"
+                            disabled={
+                              !canUp ||
+                              editSubmitting ||
+                              deletingId !== null ||
+                              editingId !== null ||
+                              reorderingId !== null
+                            }
+                            onClick={() => void handleMoveRow(row, "up")}
+                          >
+                            <ChevronUp className="size-4" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex size-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-30"
+                            aria-label="아래로 이동"
+                            title="같은 그룹에서 아래로"
+                            disabled={
+                              !canDown ||
+                              editSubmitting ||
+                              deletingId !== null ||
+                              editingId !== null ||
+                              reorderingId !== null
+                            }
+                            onClick={() => void handleMoveRow(row, "down")}
+                          >
+                            <ChevronDown className="size-4" aria-hidden />
+                          </button>
+                        </div>
                         <button
                           type="button"
                           className="text-sm font-medium text-[#E5762C] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
@@ -404,6 +512,7 @@ export function CategoryManageModal({
                           disabled={
                             editSubmitting ||
                             deletingId !== null ||
+                            reorderingId !== null ||
                             (editingId !== null && editingId !== row.id)
                           }
                         >
@@ -416,7 +525,8 @@ export function CategoryManageModal({
                           disabled={
                             editSubmitting ||
                             deletingId !== null ||
-                            editingId !== null
+                            editingId !== null ||
+                            reorderingId !== null
                           }
                         >
                           {deletingId === row.id ? "삭제 중…" : "삭제"}
@@ -457,16 +567,34 @@ export function CategoryManageModal({
                             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#E5762C]" />
                           </div>
                         </DialogField>
-                        <DialogField>
-                          <DialogLabel>정렬 순서</DialogLabel>
-                          <DialogInput
-                            type="number"
-                            inputMode="numeric"
-                            min={0}
-                            value={editSortOrder}
-                            onChange={(e) => setEditSortOrder(e.target.value)}
-                          />
-                        </DialogField>
+                        <div>
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-[#E5762C] hover:underline"
+                            onClick={() => setAdvancedSortOpen((o) => !o)}
+                          >
+                            {advancedSortOpen
+                              ? "고급 옵션 접기"
+                              : "고급: 정렬 순서 직접 입력"}
+                          </button>
+                          {advancedSortOpen ? (
+                            <DialogField className="mt-3">
+                              <DialogLabel>정렬 순서 (숫자)</DialogLabel>
+                              <DialogInput
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                value={editSortOrder}
+                                onChange={(e) =>
+                                  setEditSortOrder(e.target.value)
+                                }
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                목록의 ▲▼으로 순서를 바꾸는 것을 권장합니다.
+                              </p>
+                            </DialogField>
+                          ) : null}
+                        </div>
                         <Checkbox
                           variant="checkbox02"
                           checkboxSize="sm"
@@ -482,7 +610,7 @@ export function CategoryManageModal({
                             variant="outlined"
                             className="h-10 flex-1 rounded-[12px]"
                             onClick={cancelEdit}
-                            disabled={editSubmitting}
+                            disabled={editSubmitting || reorderingId !== null}
                           >
                             취소
                           </Button>
@@ -491,7 +619,9 @@ export function CategoryManageModal({
                             variant="solid"
                             className="h-10 flex-1 rounded-[12px]"
                             onClick={() => void handleSaveEdit()}
-                            disabled={editSubmitting}
+                            disabled={
+                              editSubmitting || reorderingId !== null
+                            }
                           >
                             저장
                           </Button>
@@ -499,7 +629,8 @@ export function CategoryManageModal({
                       </div>
                     ) : null}
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </section>
@@ -512,7 +643,12 @@ export function CategoryManageModal({
               variant="outlined"
               className="h-[50px] flex-1 rounded-[12px]"
               onClick={resetAndClose}
-              disabled={submitting || editSubmitting || deletingId !== null}
+              disabled={
+                submitting ||
+                editSubmitting ||
+                deletingId !== null ||
+                reorderingId !== null
+              }
             >
               닫기
             </Button>
