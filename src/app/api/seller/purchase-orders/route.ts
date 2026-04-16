@@ -19,16 +19,24 @@ export async function GET(req: Request) {
   const query = incoming.searchParams.toString()
   const upstreamUrl = `${API_BASE_URL}/api/seller/purchase-orders${query ? `?${query}` : ""}`
 
-  const upstream = await fetch(upstreamUrl, {
-    method: "GET",
-    headers: buildHeaders(req),
-  })
+  try {
+    const upstream = await fetch(upstreamUrl, {
+      method: "GET",
+      headers: buildHeaders(req),
+    })
 
-  const text = await upstream.text()
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
-    },
-  })
+    const text = await upstream.text()
+    return new NextResponse(text, {
+      status: upstream.status,
+      headers: {
+        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      },
+    })
+  } catch (err) {
+    console.error("[api/seller/purchase-orders] upstream fetch failed", upstreamUrl, err)
+    return NextResponse.json(
+      { success: false, message: "백엔드에 연결하지 못했습니다." },
+      { status: 502 },
+    )
+  }
 }

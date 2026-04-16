@@ -12,41 +12,36 @@ import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
-import { ensureAccessTokenFresh } from "@/lib/auth/ensure-access-token";
 import { cn } from "@/lib/utils";
 import { getBudgetSummary } from "@/app/admin/purchase-manage/_lib/budget-api";
-import {
-  getSellerPurchaseOrders,
-  type SellerOrderListItem,
-} from "@/app/admin/purchase-manage/_lib/seller-order-api";
-import { getMembers } from "@/app/members/_lib/api";
-import {
-  getPurchaseRequestDetail,
-  type PurchaseRequestDetailResult,
-} from "@/app/purchase-requests/_lib/api";
 import {
   fetchExpensesTotalByDateRange,
   fetchMonthlyExpensesTotal,
   invalidateExpensesClientCache,
 } from "@/app/budget-mng/_components/_lib/api";
+import {
+  fetchApprovedPurchaseHistory,
+  paginateList,
+  sortPurchaseHistoryItems,
+} from "./_lib/history-data";
 
 const ITEMS_PER_PAGE = 6;
 const SUMMARY_CARDS_BASE = [
   {
     title: "이번 달 지출액",
-    subText: "데이터 연동 예정",
+    subText: "",
     amount: "-",
     gridClassName: "col-span-1 xl:col-span-3",
   },
   {
     title: "이번 달 남은 예산",
-    subText: "데이터 연동 예정",
+    subText: "",
     amount: "-",
     gridClassName: "col-span-1 xl:col-span-3",
   },
   {
     title: "올해 총 지출액",
-    subText: "데이터 연동 예정",
+    subText: "",
     amount: "-",
     gridClassName: "col-span-2 xl:col-span-3",
   },
@@ -63,220 +58,6 @@ function getPreviousCalendarMonth(year: number, month: number): {
 } {
   const d = new Date(year, month - 2, 1);
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
-}
-
-function formatDate(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}.${m}.${day}`;
-}
-
-function toHistoryItem(raw: Record<string, unknown>): PurchaseRequestItem | null {
-  const itemList = Array.isArray(raw.items) ? (raw.items as Record<string, unknown>[]) : [];
-  const firstItem = itemList[0] ?? {};
-  const id = String(raw.id ?? raw.orderId ?? raw.purchaseOrderId ?? "").trim();
-  if (!id) return null;
-  const totalQuantity =
-    Number(raw.totalQuantity ?? raw.quantity ?? raw.totalCount) ||
-    itemList.reduce((acc, cur) => acc + Number(cur.quantity ?? 0), 0);
-  const totalAmount = Number(
-    raw.totalAmount ?? raw.amount ?? raw.totalPrice ?? raw.itemsAmount ?? 0
-  );
-  const productName =
-    String(
-      raw.productSummary ??
-        raw.productName ??
-        firstItem.productName ??
-        firstItem.name ??
-        "구매 품목",
-    ).trim() || "구매 품목";
-  const summary =
-    itemList.length > 1 ? `${productName} 외 ${itemList.length - 1}건` : productName;
-
-  return {
-    id,
-    requestDate: formatDate(raw.requestedAt ?? raw.requestDate ?? raw.createdAt),
-    approvalDate: formatDate(raw.approvedAt ?? raw.approvalDate ?? raw.updatedAt),
-    requester: String(
-      raw.requesterName ?? raw.requester ?? raw.requestedByName ?? "요청자",
-    ),
-    manager: String(raw.managerName ?? raw.approverName ?? raw.manager ?? "담당자"),
-    productSummary: summary,
-    totalQuantity: Number.isFinite(totalQuantity) ? totalQuantity : 0,
-    totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
-    status: "approved",
-    imageUrl:
-      typeof firstItem.imageUrl === "string"
-        ? firstItem.imageUrl
-        : typeof firstItem.thumbnailUrl === "string"
-          ? firstItem.thumbnailUrl
-          : undefined,
-  };
-}
-
-function sellerOrderToHistoryItem(order: SellerOrderListItem): PurchaseRequestItem | null {
-  return toHistoryItem({
-    id: String(order.id),
-    createdAt: order.createdAt,
-    updatedAt: order.createdAt,
-    itemsAmount: order.itemsAmount,
-    totalAmount: Number(order.itemsAmount),
-    productSummary: `구매 요청 #${order.purchaseRequestId}`,
-  });
-}
-
-async function loadMemberNameById(): Promise<Record<number, string>> {
-  try {
-    const result = await getMembers({ page: 1, pageSize: 1000 });
-    const next: Record<number, string> = {};
-    for (const m of result.members) {
-      const id = Number(m.id);
-      const name = String(m.name ?? "").trim();
-      if (Number.isFinite(id) && id > 0 && name) next[id] = name;
-    }
-    return next;
-  } catch {
-    return {};
-  }
-}
-
-function resolveRequesterNameFromDetail(
-  detail: PurchaseRequestDetailResult,
-  memberNameById: Record<number, string>
-): string {
-  const direct =
-    detail.requesterName ??
-    detail.requesterDisplayName ??
-    detail.requesterUserName ??
-    detail.requester?.displayName ??
-    detail.requester?.name ??
-    detail.requesterUser?.displayName ??
-    detail.requesterUser?.name;
-  const name = typeof direct === "string" ? direct.trim() : "";
-  if (name) return name;
-  const mapped = memberNameById[detail.requesterUserId]?.trim();
-  if (mapped) return mapped;
-  return `사용자 #${detail.requesterUserId}`;
-}
-
-function buildProductSummaryFromDetail(detail: PurchaseRequestDetailResult): string {
-  const firstItemName = detail.items.find(
-    (item) => (item.productNameSnapshot?.trim().length ?? 0) > 0
-  )?.productNameSnapshot?.trim();
-  const count = detail.items.length;
-  if (!firstItemName) {
-    return count > 0 ? `요청 품목 ${count}건` : "요청 품목 없음";
-  }
-  const remain = Math.max(0, count - 1);
-  return remain > 0 ? `${firstItemName} 외 ${remain}건` : firstItemName;
-}
-
-function mergeSellerOrderWithDetail(
-  order: SellerOrderListItem,
-  detail: PurchaseRequestDetailResult,
-  memberNameById: Record<number, string>
-): PurchaseRequestItem {
-  const amountOrder = Number(order.itemsAmount);
-  const amountDetail = Number(detail.totalAmount ?? 0);
-  const totalAmount =
-    Number.isFinite(amountOrder) && amountOrder > 0 ? amountOrder : amountDetail;
-
-  const totalQuantity = detail.items.reduce((sum, item) => sum + item.quantity, 0);
-
-  const requester = resolveRequesterNameFromDetail(detail, memberNameById);
-  const managerRaw = String(detail.approverName ?? "").trim();
-  const manager = managerRaw.length > 0 ? managerRaw : "—";
-
-  return {
-    id: String(order.id),
-    approvalDate: formatDate(detail.decisionAt ?? detail.updatedAt ?? order.createdAt),
-    productSummary: buildProductSummaryFromDetail(detail),
-    totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
-    requester,
-    manager,
-    requestDate: formatDate(detail.requestedAt),
-    totalQuantity: Number.isFinite(totalQuantity) ? totalQuantity : 0,
-    status: "approved",
-  };
-}
-
-async function fetchAllHistorySellerOrders(): Promise<SellerOrderListItem[]> {
-  const statuses = ["PURCHASED", "APPROVED"] as const satisfies readonly SellerOrderListItem["status"][];
-  const seen = new Set<number>();
-  const orders: SellerOrderListItem[] = [];
-
-  for (const status of statuses) {
-    let page = 1;
-    let totalPages = 1;
-    while (page <= totalPages) {
-      const res = await getSellerPurchaseOrders({ page, limit: 100, status });
-      totalPages = res.totalPages;
-      for (const o of res.data) {
-        if (!seen.has(o.id)) {
-          seen.add(o.id);
-          orders.push(o);
-        }
-      }
-      page += 1;
-    }
-  }
-  return orders;
-}
-
-/** 구매 승인·구매기록 완료 후에는 주문이 `PURCHASED`가 되므로, 내역에는 `PURCHASED`와 `APPROVED`를 모두 포함합니다. */
-async function fetchApprovedPurchaseHistory(): Promise<PurchaseRequestItem[]> {
-  if (typeof window === "undefined") return [];
-  const okSession = await ensureAccessTokenFresh();
-  if (!okSession) throw new Error("로그인이 필요합니다.");
-
-  const [memberNameById, orders] = await Promise.all([
-    loadMemberNameById(),
-    fetchAllHistorySellerOrders(),
-  ]);
-
-  const uniqueRequestIds = [...new Set(orders.map((o) => o.purchaseRequestId))];
-  const detailByRequestId = new Map<number, PurchaseRequestDetailResult>();
-  await Promise.all(
-    uniqueRequestIds.map(async (rid) => {
-      try {
-        detailByRequestId.set(rid, await getPurchaseRequestDetail(rid));
-      } catch {
-        // 상세 없으면 주문만으로 폴백
-      }
-    })
-  );
-
-  return orders
-    .map((order) => {
-      const detail = detailByRequestId.get(order.purchaseRequestId);
-      if (detail) return mergeSellerOrderWithDetail(order, detail, memberNameById);
-      return sellerOrderToHistoryItem(order);
-    })
-    .filter((v): v is PurchaseRequestItem => Boolean(v));
-}
-
-function sortItems(
-  items: PurchaseRequestItem[],
-  sort: PurchaseRequestSort
-): PurchaseRequestItem[] {
-  const copy = [...items];
-  if (sort === "latest") {
-    copy.sort((a, b) => (b.requestDate > a.requestDate ? 1 : -1));
-  } else if (sort === "amountAsc") {
-    copy.sort((a, b) => a.totalAmount - b.totalAmount);
-  } else {
-    copy.sort((a, b) => b.totalAmount - a.totalAmount);
-  }
-  return copy;
-}
-
-function paginate<T>(list: T[], page: number, perPage: number): T[] {
-  const start = (page - 1) * perPage;
-  return list.slice(start, start + perPage);
 }
 
 export default function PurchaseHistoryPage() {
@@ -408,7 +189,7 @@ export default function PurchaseHistoryPage() {
     ytdVsLastYearSubText,
   ]);
 
-  const sortedItems = useMemo(() => sortItems(items, sort), [items, sort]);
+  const sortedItems = useMemo(() => sortPurchaseHistoryItems(items, sort), [items, sort]);
   const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
 
@@ -419,7 +200,7 @@ export default function PurchaseHistoryPage() {
   }, [currentPage, totalPages]);
 
   const pageItems = useMemo(
-    () => paginate(sortedItems, safePage, ITEMS_PER_PAGE),
+    () => paginateList(sortedItems, safePage, ITEMS_PER_PAGE),
     [sortedItems, safePage]
   );
 

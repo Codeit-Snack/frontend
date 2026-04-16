@@ -694,6 +694,48 @@ function collectExpenseRowsFromNode(node: unknown, depth = 0): Record<string, un
   return []
 }
 
+/** GET `/api/expenses` 응답에서 지출 행 배열만 추출 (구매요청 ID·기록자 매핑용) */
+function pickExpenseRowsFromPayload(payload: unknown): Record<string, unknown>[] {
+  const inner = unwrapBudgetEnvelope(payload)
+  const fromInner = collectExpenseRowsFromNode(inner)
+  if (fromInner.length > 0) return fromInner
+  if (isBudgetRecord(payload)) {
+    const fromRoot = collectExpenseRowsFromNode(payload)
+    if (fromRoot.length > 0) return fromRoot
+  }
+  return []
+}
+
+/**
+ * 기간별 지출 **행** 목록 (`GET /api/expenses?from=...&to=...` 등).
+ * 구매내역 상세에서 요청인·담당자 보강에 사용합니다.
+ */
+export async function fetchExpenseRecordsByDateRange(params: {
+  from: string
+  to: string
+}): Promise<Record<string, unknown>[]> {
+  const { from, to } = params
+  const paths = [
+    `/api/expenses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    `/api/expenses?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`,
+  ]
+  let lastRows: Record<string, unknown>[] = []
+  for (const path of paths) {
+    try {
+      const payload = await requestApi<unknown>(path, undefined, {
+        suppressLogStatuses: [400, 404],
+        maxRateLimitAttempts: 0,
+      })
+      const rows = pickExpenseRowsFromPayload(payload)
+      if (rows.length > 0) return rows
+      lastRows = rows
+    } catch {
+      // 다음 쿼리 형식 시도
+    }
+  }
+  return lastRows
+}
+
 /** GET `/api/expenses` — 이번 달 지출 합계 (응답 스키마가 달라질 수 있음) */
 function pickTotalExpenseFromPayload(payload: unknown): number | null {
   const inner = unwrapBudgetEnvelope(payload) as unknown
@@ -797,8 +839,10 @@ async function fetchMonthlyExpensesTotalUncached(params: {
     } catch (e) {
       lastErr = e instanceof Error ? e : new Error(String(e))
       const msg = lastErr.message
-      // 429는 같은 API를 연속으로 두드리면 악화되므로 대체 쿼리로 넘어가지 않음
+      // 429·5xx·네트워크는 대체 쿼리로도 동일할 가능성이 높아 추가 요청을 하지 않음
       if (/\(429\)/.test(msg)) throw lastErr
+      if (/\((5\d\d)\)/.test(msg)) throw lastErr
+      if (/Failed to fetch|NetworkError|ECONNREFUSED|fetch failed/i.test(msg)) throw lastErr
       const canTryAlternate =
         /\((400|404)\)/.test(msg) ||
         /Bad Request/i.test(msg) ||
