@@ -15,6 +15,12 @@ export interface PurchaseRequestListItem {
   requestedAt: string;
   canceledAt: string | null;
   itemCount: number;
+  requesterUserId?: number;
+  requesterId?: number;
+  requestedByUserId?: number;
+  requesterName?: string | null;
+  requesterDisplayName?: string | null;
+  requesterUserName?: string | null;
 }
 
 export interface PurchaseRequestListResult {
@@ -40,6 +46,11 @@ export interface PurchaseRequestDetailItem {
 export interface PurchaseRequestDetailResult extends PurchaseRequestListItem {
   buyerOrganizationId: number;
   requesterUserId: number;
+  requesterName?: string | null;
+  requesterDisplayName?: string | null;
+  requesterUserName?: string | null;
+  requester?: { name?: string | null; displayName?: string | null } | null;
+  requesterUser?: { name?: string | null; displayName?: string | null } | null;
   requestMessage: string | null;
   updatedAt: string;
   decisionMessage?: string | null;

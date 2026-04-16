@@ -20,6 +20,7 @@ import {
   type PurchaseRequestListItem,
   type PurchaseRequestSortParam,
 } from "@/app/purchase-requests/_lib/api";
+import { getMembers } from "@/app/members/_lib/api";
 import {
   approveSellerPurchaseOrder,
   completeSellerPurchaseOrder,
@@ -63,6 +64,12 @@ function parseAmount(value: string): number {
 }
 
 function mapToUiItem(item: PurchaseRequestListItem): PurchaseRequestItem {
+  const requesterName = String(
+    item.requesterName ??
+    item.requesterDisplayName ??
+    item.requesterUserName ??
+    ""
+  ).trim();
   const unknownSummary =
     item.itemCount <= 0
       ? "요청 품목 없음"
@@ -73,7 +80,7 @@ function mapToUiItem(item: PurchaseRequestListItem): PurchaseRequestItem {
   return {
     id: item.id,
     requestDate: formatDate(item.requestedAt),
-    requester: "사용자",
+    requester: requesterName || "요청자",
     productSummary: unknownSummary,
     totalQuantity: item.itemCount,
     totalAmount: parseAmount(item.totalAmount),
@@ -89,6 +96,16 @@ function buildProductSummary(firstItemName: string | undefined, itemCount: numbe
   return remain > 0 ? `${name} 외 ${remain}건` : name;
 }
 
+function pickRequesterUserId(item: PurchaseRequestListItem): number | null {
+  const n = Number(
+    item.requesterUserId ??
+      item.requesterId ??
+      item.requestedByUserId ??
+      NaN
+  );
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function mapModalItems(
   detailItems: Awaited<ReturnType<typeof getPurchaseRequestDetail>>["items"]
 ): PurchaseRequestDetailItem[] {
@@ -102,8 +119,23 @@ function mapModalItems(
   }));
 }
 
-async function findPendingSellerOrderByRequestId(
-  purchaseRequestId: number
+function resolveRequesterName(detail: Awaited<ReturnType<typeof getPurchaseRequestDetail>>): string {
+  const direct =
+    detail.requesterName ??
+    detail.requesterDisplayName ??
+    detail.requesterUserName ??
+    detail.requester?.displayName ??
+    detail.requester?.name ??
+    detail.requesterUser?.displayName ??
+    detail.requesterUser?.name;
+  const name = typeof direct === "string" ? direct.trim() : "";
+  if (name) return name;
+  return `사용자 #${detail.requesterUserId}`;
+}
+
+async function findSellerOrderByRequestId(
+  purchaseRequestId: number,
+  status?: SellerOrderListItem["status"]
 ): Promise<SellerOrderListItem | null> {
   let page = 1;
   let totalPages = 1;
@@ -112,12 +144,11 @@ async function findPendingSellerOrderByRequestId(
     const response = await getSellerPurchaseOrders({
       page,
       limit: 100,
+      ...(status ? { status } : {}),
     });
     totalPages = response.totalPages;
 
-    const matched = response.data.find(
-      (order) => order.purchaseRequestId === purchaseRequestId
-    );
+    const matched = response.data.find((order) => order.purchaseRequestId === purchaseRequestId);
     if (matched) return matched;
     page += 1;
   }
@@ -144,6 +175,7 @@ export default function PurchaseManagePage() {
   const [approveErrorMessage, setApproveErrorMessage] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [remainingBudget, setRemainingBudget] = useState<number>(0);
+  const [memberNameById, setMemberNameById] = useState<Record<number, string>>({});
 
   const fetchList = useCallback(async (page: number, currentSort: PurchaseRequestSort) => {
     setLoading(true);
@@ -166,11 +198,21 @@ export default function PurchaseManagePage() {
             const totalQuantity = detail.items.reduce((sum, item) => sum + item.quantity, 0);
             return {
               ...base,
-              requester: `사용자 #${detail.requesterUserId}`,
+              requester:
+                (() => {
+                  const byDetail = resolveRequesterName(detail);
+                  if (!byDetail.startsWith("사용자 #")) return byDetail;
+                  const mapped = memberNameById[detail.requesterUserId];
+                  return mapped?.trim() || byDetail;
+                })(),
               productSummary: buildProductSummary(firstItemName, detail.itemCount),
               totalQuantity,
             };
           } catch {
+            const requesterId = pickRequesterUserId(row);
+            if (requesterId && memberNameById[requesterId]) {
+              return { ...base, requester: memberNameById[requesterId] };
+            }
             return base;
           }
         })
@@ -190,6 +232,29 @@ export default function PurchaseManagePage() {
     } finally {
       setLoading(false);
     }
+  }, [memberNameById]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMembers({ page: 1, pageSize: 1000 })
+      .then((result) => {
+        if (cancelled) return;
+        const next: Record<number, string> = {};
+        for (const m of result.members) {
+          const id = Number(m.id);
+          const name = String(m.name ?? "").trim();
+          if (Number.isFinite(id) && id > 0 && name) {
+            next[id] = name;
+          }
+        }
+        setMemberNameById(next);
+      })
+      .catch(() => {
+        // 요청인 이름 보강 실패 시에도 목록 렌더는 계속 진행
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const fetchMonthlyRemainingBudget = useCallback(async () => {
@@ -223,7 +288,10 @@ export default function PurchaseManagePage() {
     if (!cancelTarget || actionLoading) return;
     try {
       setActionLoading(true);
-      const order = await findPendingSellerOrderByRequestId(cancelTarget.id);
+      const order = await findSellerOrderByRequestId(
+        cancelTarget.id,
+        "PENDING_SELLER_APPROVAL"
+      );
       if (!order) {
         throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
       }
@@ -351,19 +419,34 @@ export default function PurchaseManagePage() {
           try {
             setActionLoading(true);
             setApproveErrorMessage("");
-            const order = await findPendingSellerOrderByRequestId(approveTarget.id);
-            if (!order) {
+            const approvedOrder = await findSellerOrderByRequestId(
+              approveTarget.id,
+              "APPROVED"
+            );
+            const pendingOrder = approvedOrder
+              ? null
+              : await findSellerOrderByRequestId(approveTarget.id, "PENDING_SELLER_APPROVAL");
+            if (!approvedOrder && !pendingOrder) {
               throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
             }
-            await approveSellerPurchaseOrder({
-              orderId: order.id,
-              decisionMessage: message || undefined,
-            });
+            if (pendingOrder) {
+              await approveSellerPurchaseOrder({
+                orderId: pendingOrder.id,
+                decisionMessage: message || undefined,
+              });
+            }
+            const recordTargetOrder =
+              (await findSellerOrderByRequestId(approveTarget.id, "APPROVED")) ??
+              approvedOrder ??
+              null;
+            if (!recordTargetOrder) {
+              throw new Error("주문 승인 상태 확인 후 다시 시도해주세요.");
+            }
             await completeSellerPurchaseOrder({
-              orderId: order.id,
+              orderId: recordTargetOrder.id,
             });
             await createExpenseFromSellerOrder({
-              orderId: order.id,
+              orderId: recordTargetOrder.id,
               itemsAmount: approveTarget.totalAmount,
               note: "관리자 구매 승인 처리",
             });

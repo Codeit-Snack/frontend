@@ -12,11 +12,23 @@ import { PurchaseRequestTable } from "./_components/PurchaseRequestTable";
 import { PurchaseRequestCard } from "./_components/PurchaseRequestCard";
 import { EmptyState } from "./_components/EmptyState";
 import { ConfirmCancelModal } from "./_components/ConfirmCancelModal";
-import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
-import { API_BASE_URL } from "@/lib/env";
+import { ensureAccessTokenFresh } from "@/lib/auth/ensure-access-token";
 import { cn } from "@/lib/utils";
 import { getBudgetSummary } from "@/app/admin/purchase-manage/_lib/budget-api";
-import { fetchMonthlyExpensesTotal } from "@/app/budget-mng/_components/_lib/api";
+import {
+  getSellerPurchaseOrders,
+  type SellerOrderListItem,
+} from "@/app/admin/purchase-manage/_lib/seller-order-api";
+import { getMembers } from "@/app/members/_lib/api";
+import {
+  getPurchaseRequestDetail,
+  type PurchaseRequestDetailResult,
+} from "@/app/purchase-requests/_lib/api";
+import {
+  fetchExpensesTotalByDateRange,
+  fetchMonthlyExpensesTotal,
+  invalidateExpensesClientCache,
+} from "@/app/budget-mng/_components/_lib/api";
 
 const ITEMS_PER_PAGE = 6;
 const SUMMARY_CARDS_BASE = [
@@ -53,40 +65,6 @@ function getPreviousCalendarMonth(year: number, month: number): {
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
-function ymKey(year: number, month: number): string {
-  return `${year}-${month}`;
-}
-
-/** 월별 지출을 중복 없이 순차 호출해 429(과다 요청)를 줄입니다. */
-async function fetchMonthlyExpensesUniqueSequential(
-  pairs: { year: number; month: number }[],
-  opts: { delayMs: number; isCancelled: () => boolean }
-): Promise<Map<string, number | null>> {
-  const unique = new Map<string, { year: number; month: number }>();
-  for (const p of pairs) {
-    unique.set(ymKey(p.year, p.month), p);
-  }
-  const sorted = [...unique.values()].sort((a, b) =>
-    a.year !== b.year ? a.year - b.year : a.month - b.month
-  );
-  const out = new Map<string, number | null>();
-  for (let i = 0; i < sorted.length; i++) {
-    if (opts.isCancelled()) return out;
-    const p = sorted[i]!;
-    const key = ymKey(p.year, p.month);
-    try {
-      const v = await fetchMonthlyExpensesTotal(p);
-      out.set(key, v);
-    } catch {
-      out.set(key, null);
-    }
-    if (opts.delayMs > 0 && i < sorted.length - 1) {
-      await new Promise((r) => setTimeout(r, opts.delayMs));
-    }
-  }
-  return out;
-}
-
 function formatDate(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "-";
   const d = new Date(value);
@@ -97,23 +75,6 @@ function formatDate(value: unknown): string {
   return `${y}.${m}.${day}`;
 }
 
-function pickList(payload: unknown): Record<string, unknown>[] {
-  if (Array.isArray(payload)) return payload as Record<string, unknown>[];
-  if (!payload || typeof payload !== "object") return [];
-  const p = payload as Record<string, unknown>;
-  const data =
-    p.data && typeof p.data === "object"
-      ? (p.data as Record<string, unknown>)
-      : p;
-  if (Array.isArray(data.items)) return data.items as Record<string, unknown>[];
-  if (Array.isArray(data.list)) return data.list as Record<string, unknown>[];
-  if (Array.isArray(data.content)) return data.content as Record<string, unknown>[];
-  if (Array.isArray(data.orders)) return data.orders as Record<string, unknown>[];
-  if (Array.isArray(data.purchaseOrders))
-    return data.purchaseOrders as Record<string, unknown>[];
-  return [];
-}
-
 function toHistoryItem(raw: Record<string, unknown>): PurchaseRequestItem | null {
   const itemList = Array.isArray(raw.items) ? (raw.items as Record<string, unknown>[]) : [];
   const firstItem = itemList[0] ?? {};
@@ -122,7 +83,9 @@ function toHistoryItem(raw: Record<string, unknown>): PurchaseRequestItem | null
   const totalQuantity =
     Number(raw.totalQuantity ?? raw.quantity ?? raw.totalCount) ||
     itemList.reduce((acc, cur) => acc + Number(cur.quantity ?? 0), 0);
-  const totalAmount = Number(raw.totalAmount ?? raw.amount ?? raw.totalPrice ?? 0);
+  const totalAmount = Number(
+    raw.totalAmount ?? raw.amount ?? raw.totalPrice ?? raw.itemsAmount ?? 0
+  );
   const productName =
     String(
       raw.productSummary ??
@@ -155,35 +118,145 @@ function toHistoryItem(raw: Record<string, unknown>): PurchaseRequestItem | null
   };
 }
 
+function sellerOrderToHistoryItem(order: SellerOrderListItem): PurchaseRequestItem | null {
+  return toHistoryItem({
+    id: String(order.id),
+    createdAt: order.createdAt,
+    updatedAt: order.createdAt,
+    itemsAmount: order.itemsAmount,
+    totalAmount: Number(order.itemsAmount),
+    productSummary: `구매 요청 #${order.purchaseRequestId}`,
+  });
+}
+
+async function loadMemberNameById(): Promise<Record<number, string>> {
+  try {
+    const result = await getMembers({ page: 1, pageSize: 1000 });
+    const next: Record<number, string> = {};
+    for (const m of result.members) {
+      const id = Number(m.id);
+      const name = String(m.name ?? "").trim();
+      if (Number.isFinite(id) && id > 0 && name) next[id] = name;
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+function resolveRequesterNameFromDetail(
+  detail: PurchaseRequestDetailResult,
+  memberNameById: Record<number, string>
+): string {
+  const direct =
+    detail.requesterName ??
+    detail.requesterDisplayName ??
+    detail.requesterUserName ??
+    detail.requester?.displayName ??
+    detail.requester?.name ??
+    detail.requesterUser?.displayName ??
+    detail.requesterUser?.name;
+  const name = typeof direct === "string" ? direct.trim() : "";
+  if (name) return name;
+  const mapped = memberNameById[detail.requesterUserId]?.trim();
+  if (mapped) return mapped;
+  return `사용자 #${detail.requesterUserId}`;
+}
+
+function buildProductSummaryFromDetail(detail: PurchaseRequestDetailResult): string {
+  const firstItemName = detail.items.find(
+    (item) => (item.productNameSnapshot?.trim().length ?? 0) > 0
+  )?.productNameSnapshot?.trim();
+  const count = detail.items.length;
+  if (!firstItemName) {
+    return count > 0 ? `요청 품목 ${count}건` : "요청 품목 없음";
+  }
+  const remain = Math.max(0, count - 1);
+  return remain > 0 ? `${firstItemName} 외 ${remain}건` : firstItemName;
+}
+
+function mergeSellerOrderWithDetail(
+  order: SellerOrderListItem,
+  detail: PurchaseRequestDetailResult,
+  memberNameById: Record<number, string>
+): PurchaseRequestItem {
+  const amountOrder = Number(order.itemsAmount);
+  const amountDetail = Number(detail.totalAmount ?? 0);
+  const totalAmount =
+    Number.isFinite(amountOrder) && amountOrder > 0 ? amountOrder : amountDetail;
+
+  const totalQuantity = detail.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const requester = resolveRequesterNameFromDetail(detail, memberNameById);
+  const managerRaw = String(detail.approverName ?? "").trim();
+  const manager = managerRaw.length > 0 ? managerRaw : "—";
+
+  return {
+    id: String(order.id),
+    approvalDate: formatDate(detail.decisionAt ?? detail.updatedAt ?? order.createdAt),
+    productSummary: buildProductSummaryFromDetail(detail),
+    totalAmount: Number.isFinite(totalAmount) ? totalAmount : 0,
+    requester,
+    manager,
+    requestDate: formatDate(detail.requestedAt),
+    totalQuantity: Number.isFinite(totalQuantity) ? totalQuantity : 0,
+    status: "approved",
+  };
+}
+
+async function fetchAllHistorySellerOrders(): Promise<SellerOrderListItem[]> {
+  const statuses = ["PURCHASED", "APPROVED"] as const satisfies readonly SellerOrderListItem["status"][];
+  const seen = new Set<number>();
+  const orders: SellerOrderListItem[] = [];
+
+  for (const status of statuses) {
+    let page = 1;
+    let totalPages = 1;
+    while (page <= totalPages) {
+      const res = await getSellerPurchaseOrders({ page, limit: 100, status });
+      totalPages = res.totalPages;
+      for (const o of res.data) {
+        if (!seen.has(o.id)) {
+          seen.add(o.id);
+          orders.push(o);
+        }
+      }
+      page += 1;
+    }
+  }
+  return orders;
+}
+
+/** 구매 승인·구매기록 완료 후에는 주문이 `PURCHASED`가 되므로, 내역에는 `PURCHASED`와 `APPROVED`를 모두 포함합니다. */
 async function fetchApprovedPurchaseHistory(): Promise<PurchaseRequestItem[]> {
   if (typeof window === "undefined") return [];
-  const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)?.trim();
-  if (!token) throw new Error("로그인이 필요합니다.");
+  const okSession = await ensureAccessTokenFresh();
+  if (!okSession) throw new Error("로그인이 필요합니다.");
 
-  const paths = [
-    "/api/seller/purchase-orders?status=APPROVED",
-    "/api/seller/purchase-orders?approvalStatus=APPROVED",
-    "/api/seller/purchase-orders/approved",
-  ];
+  const [memberNameById, orders] = await Promise.all([
+    loadMemberNameById(),
+    fetchAllHistorySellerOrders(),
+  ]);
 
-  for (const path of paths) {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!res.ok) {
-      if (res.status === 404) continue;
-      throw new Error(`구매내역 조회에 실패했습니다. (${res.status})`);
-    }
-    const body: unknown = await res.json().catch(() => null);
-    const list = pickList(body).map(toHistoryItem).filter((v): v is PurchaseRequestItem => Boolean(v));
-    return list;
-  }
+  const uniqueRequestIds = [...new Set(orders.map((o) => o.purchaseRequestId))];
+  const detailByRequestId = new Map<number, PurchaseRequestDetailResult>();
+  await Promise.all(
+    uniqueRequestIds.map(async (rid) => {
+      try {
+        detailByRequestId.set(rid, await getPurchaseRequestDetail(rid));
+      } catch {
+        // 상세 없으면 주문만으로 폴백
+      }
+    })
+  );
 
-  return [];
+  return orders
+    .map((order) => {
+      const detail = detailByRequestId.get(order.purchaseRequestId);
+      if (detail) return mergeSellerOrderWithDetail(order, detail, memberNameById);
+      return sellerOrderToHistoryItem(order);
+    })
+    .filter((v): v is PurchaseRequestItem => Boolean(v));
 }
 
 function sortItems(
@@ -394,6 +467,8 @@ export default function PurchaseHistoryPage() {
       const month = now.getMonth() + 1;
       const prev = getPreviousCalendarMonth(year, month);
 
+      invalidateExpensesClientCache();
+
       setMonthlyExpenseReady(false);
       setSummaryFinanceReady(false);
       setYearExpenseReady(false);
@@ -405,35 +480,39 @@ export default function PurchaseHistoryPage() {
       setLastMonthRemaining(null);
       setLastMonthExpenseAmount(null);
 
-      const expensePairs: { year: number; month: number }[] = [];
-      for (let m = 1; m <= month; m++) {
-        expensePairs.push({ year, month: m });
-        expensePairs.push({ year: year - 1, month: m });
-      }
-      expensePairs.push(prev);
+      const monthFrom = `${year}-${String(month).padStart(2, "0")}-01`;
+      const monthTo = `${year}-${String(month).padStart(2, "0")}-${String(
+        new Date(year, month, 0).getDate()
+      ).padStart(2, "0")}`;
+      const prevFrom = `${prev.year}-${String(prev.month).padStart(2, "0")}-01`;
+      const prevTo = `${prev.year}-${String(prev.month).padStart(2, "0")}-${String(
+        new Date(prev.year, prev.month, 0).getDate()
+      ).padStart(2, "0")}`;
+      const ytdThisFrom = `${year}-01-01`;
+      const ytdThisTo = monthTo;
+      const ytdLastFrom = `${year - 1}-01-01`;
+      const ytdLastTo = `${year - 1}-${String(month).padStart(2, "0")}-${String(
+        new Date(year - 1, month, 0).getDate()
+      ).padStart(2, "0")}`;
 
-      const expenseMap = await fetchMonthlyExpensesUniqueSequential(expensePairs, {
-        delayMs: 120,
-        isCancelled,
-      });
-      if (cancelled) return;
+      // 카드 계산에 필요한 값만 조회: 월 2건 + 누적 2건 (기존 월별 다건 조회 대비 호출 대폭 축소)
+      const [monthExpense, prevMonthExpense, ytdThis, ytdLast] = await Promise.all([
+        fetchExpensesTotalByDateRange({ from: monthFrom, to: monthTo }).catch(() =>
+          fetchMonthlyExpensesTotal({ year, month })
+        ),
+        fetchExpensesTotalByDateRange({ from: prevFrom, to: prevTo }).catch(() =>
+          fetchMonthlyExpensesTotal(prev)
+        ),
+        fetchExpensesTotalByDateRange({ from: ytdThisFrom, to: ytdThisTo }),
+        fetchExpensesTotalByDateRange({ from: ytdLastFrom, to: ytdLastTo }),
+      ]);
+      if (isCancelled()) return;
 
-      const getExp = (y: number, m: number) => expenseMap.get(ymKey(y, m)) ?? null;
-
-      setMonthlyExpenseAmount(getExp(year, month));
+      setMonthlyExpenseAmount(monthExpense ?? null);
       setMonthlyExpenseError(null);
-      setLastMonthExpenseAmount(getExp(prev.year, prev.month));
-
-      let sumThis = 0;
-      for (let m = 1; m <= month; m++) {
-        sumThis += getExp(year, m) ?? 0;
-      }
-      let sumLast = 0;
-      for (let m = 1; m <= month; m++) {
-        sumLast += getExp(year - 1, m) ?? 0;
-      }
-      setYtdExpenseThisYear(sumThis);
-      setYtdExpenseLastYear(sumLast);
+      setLastMonthExpenseAmount(prevMonthExpense ?? null);
+      setYtdExpenseThisYear(ytdThis ?? 0);
+      setYtdExpenseLastYear(ytdLast ?? 0);
       setYearExpenseError(null);
 
       const [budgetOutcome, budgetLastOutcome] = await Promise.allSettled([
@@ -460,7 +539,7 @@ export default function PurchaseHistoryPage() {
       let remLast: number | null = null;
       if (budgetLastOutcome.status === "fulfilled") {
         const capLast = Number(budgetLastOutcome.value.budgetAmount);
-        const expLast = getExp(prev.year, prev.month);
+        const expLast = prevMonthExpense ?? null;
         if (Number.isFinite(capLast) && expLast !== null) {
           remLast = capLast - expLast;
         }

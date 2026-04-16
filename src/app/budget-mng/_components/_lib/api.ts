@@ -192,7 +192,16 @@ function parseErrorMessage(payload: unknown, fallback: string) {
   return text ?? fallback
 }
 
-async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestApiOptions = {
+  suppressLogStatuses?: number[]
+  maxRateLimitAttempts?: number
+}
+
+async function requestApi<T>(
+  path: string,
+  init?: RequestInit,
+  options?: RequestApiOptions,
+): Promise<T> {
   let token = await getAccessTokenForRequest()
   const organizationId = resolveOrganizationIdFromToken(token)
   const hasBody = init?.body !== undefined
@@ -232,7 +241,7 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
 
   // 429 Too Many Requests — 응답 본문을 소비한 뒤 Retry-After·지수 백오프로 재시도
   let rateLimitAttempt = 0
-  const maxRateLimitAttempts = 4
+  const maxRateLimitAttempts = Math.max(0, options?.maxRateLimitAttempts ?? 4)
   while (response.status === 429 && rateLimitAttempt < maxRateLimitAttempts) {
     rateLimitAttempt++
     await response.text()
@@ -257,6 +266,7 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
+    const suppressLog = options?.suppressLogStatuses?.includes(response.status) ?? false
     const bodyPreview =
       typeof text === "string" && text.length > 0
         ? text.length > 500
@@ -271,11 +281,13 @@ async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
             Object.keys(json as object).length === 0
           ? "(빈 JSON 객체 — raw는 bodyPreview 참고)"
           : json
-    const logLine = `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`
-    if (response.status === 429) {
-      console.warn(logLine, { bodyPreview, parsed: parsedForLog })
-    } else {
-      console.error(logLine, { bodyPreview, parsed: parsedForLog })
+    if (!suppressLog) {
+      const logLine = `[api] ${init?.method ?? "GET"} ${url} → ${response.status} ${response.statusText}`
+      if (response.status === 429) {
+        console.warn(logLine, { bodyPreview, parsed: parsedForLog })
+      } else {
+        console.error(logLine, { bodyPreview, parsed: parsedForLog })
+      }
     }
     if (response.status === 401) {
       throw new Error(
@@ -423,6 +435,13 @@ export interface BudgetSummaryResult {
   hasPeriodConfigured: boolean
 }
 
+const budgetSummaryValueCache = new Map<string, BudgetSummaryResult>()
+const budgetSummaryInFlightCache = new Map<string, Promise<BudgetSummaryResult>>()
+
+function budgetSummaryCacheKey(year: number, month: number): string {
+  return `${year}-${month}`
+}
+
 function unwrapBudgetEnvelope(payload: unknown): unknown {
   if (payload && typeof payload === "object" && "data" in payload) {
     return (payload as { data?: unknown }).data ?? null
@@ -525,14 +544,38 @@ export async function getBudgetSummary(params: {
   year: number
   month: number
 }): Promise<BudgetSummaryResult> {
+  const key = budgetSummaryCacheKey(params.year, params.month)
+  if (budgetSummaryValueCache.has(key)) {
+    return budgetSummaryValueCache.get(key) as BudgetSummaryResult
+  }
+
+  const inFlight = budgetSummaryInFlightCache.get(key)
+  if (inFlight) return inFlight
+
   const query = new URLSearchParams({
     year: String(params.year),
     month: String(params.month),
   })
-  const payload = await requestApi<unknown>(
+  const task = requestApi<unknown>(
     `/api/budget/periods/summary?${query.toString()}`,
+    undefined,
+    { maxRateLimitAttempts: 0 },
   )
-  return unwrapBudgetEnvelope(payload) as BudgetSummaryResult
+    .then((payload) => unwrapBudgetEnvelope(payload) as BudgetSummaryResult)
+    .then((result) => {
+      budgetSummaryValueCache.set(key, result)
+      return result
+    })
+    .catch((error) => {
+      budgetSummaryInFlightCache.delete(key)
+      throw error
+    })
+    .finally(() => {
+      budgetSummaryInFlightCache.delete(key)
+    })
+
+  budgetSummaryInFlightCache.set(key, task)
+  return task
 }
 
 /**
@@ -560,35 +603,138 @@ export async function fetchMonthlyRemainingBudgetFromPeriods(params: {
   return extractRemainingFromPeriodsPayload(payload, params.year, params.month)
 }
 
+function parseMoneyScalar(value: unknown): number | null {
+  if (value === undefined || value === null) return null
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const n = Number(value.replace(/,/g, "").replace(/\s/g, ""))
+    return Number.isFinite(n) ? n : null
+  }
+  return null
+}
+
+/**
+ * 지출/매출 한 줄에서 금액 필드 추출.
+ * 백엔드가 `itemsAmount`(구매 주문 금액)와 다른 의미의 `amount`를 같이 줄 수 있어 `itemsAmount`를 우선합니다.
+ */
+function pickExpenseRowAmount(row: Record<string, unknown>): number | null {
+  const keys = [
+    "itemsAmount",
+    "items_amount",
+    "itemAmount",
+    "item_amount",
+    "paidAmount",
+    "paid_amount",
+    "purchaseAmount",
+    "purchase_amount",
+    "totalSpent",
+    "total_spent",
+    "expenseTotal",
+    "expense_total",
+    "totalAmount",
+    "total_amount",
+    "lineTotal",
+    "line_total",
+    "grossAmount",
+    "gross_amount",
+    "spentAmount",
+    "spent_amount",
+    "amount",
+    "price",
+  ] as const
+  for (const k of keys) {
+    const n = parseMoneyScalar(row[k])
+    if (n !== null) return n
+  }
+  const purchaseOrder = row.purchaseOrder ?? row.purchase_order
+  if (isBudgetRecord(purchaseOrder)) {
+    for (const k of keys) {
+      const n = parseMoneyScalar(purchaseOrder[k])
+      if (n !== null) return n
+    }
+  }
+  return null
+}
+
+const EXPENSE_ROW_ARRAY_KEYS = [
+  "data",
+  "items",
+  "expenses",
+  "list",
+  "content",
+  "results",
+  "rows",
+  "records",
+  "elements",
+] as const
+
+/**
+ * `{ data: [...] }`, `{ items: [...] }`, `{ data: { data: [...] } }` 등 GET /api/expenses 변형
+ */
+function collectExpenseRowsFromNode(node: unknown, depth = 0): Record<string, unknown>[] {
+  if (depth > 5) return []
+  if (Array.isArray(node)) {
+    const rows = node.filter(isBudgetRecord) as Record<string, unknown>[]
+    if (rows.length > 0) return rows
+    return []
+  }
+  if (!isBudgetRecord(node)) return []
+  for (const k of EXPENSE_ROW_ARRAY_KEYS) {
+    const c = node[k]
+    if (Array.isArray(c)) {
+      const rows = c.filter(isBudgetRecord) as Record<string, unknown>[]
+      if (rows.length > 0) return rows
+    }
+  }
+  const dataChild = node.data
+  if (dataChild !== undefined && dataChild !== null) {
+    const nested = collectExpenseRowsFromNode(dataChild, depth + 1)
+    if (nested.length > 0) return nested
+  }
+  return []
+}
+
 /** GET `/api/expenses` — 이번 달 지출 합계 (응답 스키마가 달라질 수 있음) */
 function pickTotalExpenseFromPayload(payload: unknown): number | null {
   const inner = unwrapBudgetEnvelope(payload) as unknown
 
-  if (Array.isArray(inner)) {
+  const rows = collectExpenseRowsFromNode(inner)
+  if (rows.length > 0) {
     let sum = 0
     let has = false
-    for (const row of inner) {
-      if (!isBudgetRecord(row)) continue
-      const a = Number(
-        row.amount ??
-          row.totalAmount ??
-          row.total_amount ??
-          row.spentAmount ??
-          row.price ??
-          row.lineTotal,
-      )
-      if (Number.isFinite(a)) {
+    for (const row of rows) {
+      const a = pickExpenseRowAmount(row)
+      if (a !== null) {
         sum += a
         has = true
       }
     }
-    return has ? sum : null
+    if (has) return sum
+  }
+
+  if (isBudgetRecord(inner) && isBudgetRecord(inner.data)) {
+    const fromNestedData = pickExpenseRowAmount(inner.data)
+    if (fromNestedData !== null) return fromNestedData
   }
 
   if (isBudgetRecord(inner)) {
+    const direct = pickExpenseRowAmount(inner)
+    if (direct !== null) return direct
+    const summary = inner.summary
+    if (isBudgetRecord(summary)) {
+      const fromSummary = pickExpenseRowAmount(summary)
+      if (fromSummary !== null) return fromSummary
+    }
+    const meta = inner.meta
+    if (isBudgetRecord(meta)) {
+      const fromMeta = pickExpenseRowAmount(meta)
+      if (fromMeta !== null) return fromMeta
+    }
     const n = Number(
       inner.totalAmount ??
         inner.total_amount ??
+        inner.totalSpent ??
+        inner.total_spent ??
         inner.spentAmount ??
         inner.spent_amount ??
         inner.amount ??
@@ -601,6 +747,8 @@ function pickTotalExpenseFromPayload(payload: unknown): number | null {
   }
 
   if (isBudgetRecord(payload)) {
+    const direct = pickExpenseRowAmount(payload)
+    if (direct !== null) return direct
     const n = Number(
       payload.totalAmount ??
         payload.total_amount ??
@@ -619,7 +767,7 @@ function pickTotalExpenseFromPayload(payload: unknown): number | null {
  * `GET /api/expenses` — 구매내역 「이번 달 지출액」 카드.
  * 백엔드마다 쿼리 스키마가 달라 400이 나면 다른 형태로 순차 재시도합니다.
  */
-export async function fetchMonthlyExpensesTotal(params: {
+async function fetchMonthlyExpensesTotalUncached(params: {
   year: number
   month: number
 }): Promise<number | null> {
@@ -630,18 +778,21 @@ export async function fetchMonthlyExpensesTotal(params: {
   const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
 
   const paths: string[] = [
-    `/api/expenses`,
-    `/api/expenses?yearMonth=${encodeURIComponent(ym)}`,
-    `/api/expenses?year=${year}&month=${month}`,
     `/api/expenses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     `/api/expenses?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`,
+    `/api/expenses?yearMonth=${encodeURIComponent(ym)}`,
+    `/api/expenses?year=${year}&month=${month}`,
+    `/api/expenses`,
   ]
 
   let lastErr: Error | null = null
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i] ?? ""
     try {
-      const payload = await requestApi<unknown>(path)
+      const payload = await requestApi<unknown>(path, undefined, {
+        suppressLogStatuses: [400, 404],
+        maxRateLimitAttempts: 0,
+      })
       return pickTotalExpenseFromPayload(payload)
     } catch (e) {
       lastErr = e instanceof Error ? e : new Error(String(e))
@@ -660,4 +811,101 @@ export async function fetchMonthlyExpensesTotal(params: {
     }
   }
   throw lastErr ?? new Error("지출 정보를 불러오지 못했습니다.")
+}
+
+const monthlyExpenseValueCache = new Map<string, number | null>()
+const monthlyExpenseInFlightCache = new Map<string, Promise<number | null>>()
+const expenseRangeValueCache = new Map<string, number | null>()
+const expenseRangeInFlightCache = new Map<string, Promise<number | null>>()
+
+/**
+ * 구매 승인 등으로 `POST /api/expenses` 이후 같은 세션에서 캐시된 지출 합계가
+ * 구매 내역·예산 화면에 남지 않도록 비웁니다.
+ */
+export function invalidateExpensesClientCache(): void {
+  monthlyExpenseValueCache.clear()
+  monthlyExpenseInFlightCache.clear()
+  expenseRangeValueCache.clear()
+  expenseRangeInFlightCache.clear()
+}
+
+function expenseCacheKey(year: number, month: number): string {
+  return `${year}-${month}`
+}
+
+function expenseRangeCacheKey(from: string, to: string): string {
+  return `${from}~${to}`
+}
+
+/**
+ * 월별 지출 조회 캐시:
+ * - 같은 월을 여러 화면/이펙트가 동시에 요청하면 1회만 호출
+ * - 이미 구한 월은 세션 동안 재사용(429 완화)
+ */
+export async function fetchMonthlyExpensesTotal(params: {
+  year: number
+  month: number
+}): Promise<number | null> {
+  const key = expenseCacheKey(params.year, params.month)
+  if (monthlyExpenseValueCache.has(key)) {
+    return monthlyExpenseValueCache.get(key) ?? null
+  }
+
+  const inFlight = monthlyExpenseInFlightCache.get(key)
+  if (inFlight) return inFlight
+
+  const task = fetchMonthlyExpensesTotalUncached(params)
+    .then((value) => {
+      monthlyExpenseValueCache.set(key, value)
+      return value
+    })
+    .catch((error) => {
+      monthlyExpenseInFlightCache.delete(key)
+      throw error
+    })
+    .finally(() => {
+      monthlyExpenseInFlightCache.delete(key)
+    })
+
+  monthlyExpenseInFlightCache.set(key, task)
+  return task
+}
+
+/**
+ * 기간 지출 합계 조회 (`GET /api/expenses?from=...&to=...`)
+ * - 같은 기간은 세션 동안 캐시
+ * - 같은 기간 동시 요청은 1회만 수행
+ */
+export async function fetchExpensesTotalByDateRange(params: {
+  from: string
+  to: string
+}): Promise<number | null> {
+  const key = expenseRangeCacheKey(params.from, params.to)
+  if (expenseRangeValueCache.has(key)) {
+    return expenseRangeValueCache.get(key) ?? null
+  }
+
+  const inFlight = expenseRangeInFlightCache.get(key)
+  if (inFlight) return inFlight
+
+  const path = `/api/expenses?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}`
+  const task = requestApi<unknown>(path, undefined, {
+    suppressLogStatuses: [400, 404],
+    maxRateLimitAttempts: 0,
+  })
+    .then((payload) => {
+      const value = pickTotalExpenseFromPayload(payload)
+      expenseRangeValueCache.set(key, value)
+      return value
+    })
+    .catch((error) => {
+      expenseRangeInFlightCache.delete(key)
+      throw error
+    })
+    .finally(() => {
+      expenseRangeInFlightCache.delete(key)
+    })
+
+  expenseRangeInFlightCache.set(key, task)
+  return task
 }

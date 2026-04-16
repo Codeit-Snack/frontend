@@ -187,10 +187,10 @@ export function PurchaseApproveModal({
           <Button
             type="button"
             variant="solid"
-            disabled={isSubmitting || isOverBudget || !normalizedMessage}
+            disabled={isSubmitting || isOverBudget}
             className="!h-14 min-w-0 flex-[3] !rounded-[14px] !bg-[#FF8225] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-white hover:!bg-[#F06E18]"
             onClick={() => {
-              if (isSubmitting || isOverBudget || !normalizedMessage) return;
+              if (isSubmitting || isOverBudget) return;
               void onApprove(normalizedMessage);
             }}
           >

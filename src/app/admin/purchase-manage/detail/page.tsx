@@ -54,6 +54,20 @@ function formatDate(value: string | null): string {
   return date.toLocaleDateString("ko-KR");
 }
 
+function resolveRequesterName(detail: PurchaseRequestDetailResult): string {
+  const direct =
+    detail.requesterName ??
+    detail.requesterDisplayName ??
+    detail.requesterUserName ??
+    detail.requester?.displayName ??
+    detail.requester?.name ??
+    detail.requesterUser?.displayName ??
+    detail.requesterUser?.name;
+  const name = typeof direct === "string" ? direct.trim() : "";
+  if (name) return name;
+  return `사용자 #${detail.requesterUserId}`;
+}
+
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-2">
@@ -65,8 +79,9 @@ function InfoField({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function findPendingSellerOrderByRequestId(
-  purchaseRequestId: number
+async function findSellerOrderByRequestId(
+  purchaseRequestId: number,
+  status?: SellerOrderListItem["status"]
 ): Promise<SellerOrderListItem | null> {
   let page = 1;
   let totalPages = 1;
@@ -75,11 +90,10 @@ async function findPendingSellerOrderByRequestId(
     const response = await getSellerPurchaseOrders({
       page,
       limit: 100,
+      ...(status ? { status } : {}),
     });
     totalPages = response.totalPages;
-    const matched = response.data.find(
-      (order) => order.purchaseRequestId === purchaseRequestId
-    );
+    const matched = response.data.find((order) => order.purchaseRequestId === purchaseRequestId);
     if (matched) return matched;
     page += 1;
   }
@@ -171,19 +185,29 @@ function PurchaseManageDetailContent() {
       if (!detail || !canDecision || actionLoading || isBudgetExceeded) return;
       try {
         setActionLoading(true);
-        const order = await findPendingSellerOrderByRequestId(detail.id);
-        if (!order) {
+        const approvedOrder = await findSellerOrderByRequestId(detail.id, "APPROVED");
+        const pendingOrder = approvedOrder
+          ? null
+          : await findSellerOrderByRequestId(detail.id, "PENDING_SELLER_APPROVAL");
+        if (!approvedOrder && !pendingOrder) {
           throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
         }
-        await approveSellerPurchaseOrder({
-          orderId: order.id,
-          decisionMessage: reason,
-        });
+        if (pendingOrder) {
+          await approveSellerPurchaseOrder({
+            orderId: pendingOrder.id,
+            decisionMessage: reason,
+          });
+        }
+        const recordTargetOrder =
+          (await findSellerOrderByRequestId(detail.id, "APPROVED")) ?? approvedOrder ?? null;
+        if (!recordTargetOrder) {
+          throw new Error("주문 승인 상태 확인 후 다시 시도해주세요.");
+        }
         await completeSellerPurchaseOrder({
-          orderId: order.id,
+          orderId: recordTargetOrder.id,
         });
         await createExpenseFromSellerOrder({
-          orderId: order.id,
+          orderId: recordTargetOrder.id,
           itemsAmount: totalPrice,
           note: "관리자 구매 승인 처리",
         });
@@ -210,7 +234,7 @@ function PurchaseManageDetailContent() {
       if (!detail || !canDecision || actionLoading) return;
       try {
         setActionLoading(true);
-        const order = await findPendingSellerOrderByRequestId(detail.id);
+        const order = await findSellerOrderByRequestId(detail.id, "PENDING_SELLER_APPROVAL");
         if (!order) {
           throw new Error("판매자 조직 권한이 없거나 연결 주문이 없습니다.");
         }
@@ -380,7 +404,7 @@ function PurchaseManageDetailContent() {
                     <p className="text_xl_regular gray_gray_400_t">
                       {formatDate(detail.requestedAt)}
                     </p>
-                    <InfoField label="요청인" value={`사용자 #${detail.requesterUserId}`} />
+                    <InfoField label="요청인" value={resolveRequesterName(detail)} />
                     <InfoField label="요청 메시지" value={detail.requestMessage ?? "-"} />
                   </div>
                 )}
@@ -447,7 +471,7 @@ function PurchaseManageDetailContent() {
           setApproveModalOpen(open);
           if (!open) setApproveErrorMessage("");
         }}
-        requesterName={detail ? `사용자 #${detail.requesterUserId}` : ""}
+        requesterName={detail ? resolveRequesterName(detail) : ""}
         items={approveModalItems}
         remainingBudget={monthlyRemaining ?? 0}
         isSubmitting={actionLoading}
