@@ -13,42 +13,15 @@ function buildHeaders(req: Request): Headers {
   return headers
 }
 
+/** 백엔드 `GET /api/seller/purchase-orders` 프록시 */
 export async function GET(req: Request) {
   const incoming = new URL(req.url)
   const query = incoming.searchParams.toString()
-  const upstreamUrl = `${API_BASE_URL}/api/expenses${query ? `?${query}` : ""}`
-  const headers = buildHeaders(req)
+  const upstreamUrl = `${API_BASE_URL}/api/seller/purchase-orders${query ? `?${query}` : ""}`
 
   const upstream = await fetch(upstreamUrl, {
     method: "GET",
-    headers,
-  })
-
-  const text = await upstream.text()
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
-    },
-  })
-}
-
-/** 백엔드 `POST /api/expenses` 프록시 */
-export async function POST(req: Request) {
-  let body: string
-  try {
-    body = await req.text()
-  } catch {
-    return NextResponse.json(
-      { success: false, message: "요청 본문을 읽을 수 없습니다." },
-      { status: 400 },
-    )
-  }
-
-  const upstream = await fetch(`${API_BASE_URL}/api/expenses`, {
-    method: "POST",
     headers: buildHeaders(req),
-    body,
   })
 
   const text = await upstream.text()

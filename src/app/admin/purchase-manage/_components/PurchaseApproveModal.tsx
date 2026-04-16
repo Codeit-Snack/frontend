@@ -21,8 +21,10 @@ export interface PurchaseApproveModalProps {
   requesterName: string;
   items: PurchaseRequestDetailItem[];
   remainingBudget: number;
+  isSubmitting?: boolean;
+  errorMessage?: string;
   onCancel: () => void;
-  onApprove: (message: string) => void;
+  onApprove: (message: string) => void | Promise<void>;
 }
 
 export function PurchaseApproveModal({
@@ -31,6 +33,8 @@ export function PurchaseApproveModal({
   requesterName,
   items,
   remainingBudget,
+  isSubmitting = false,
+  errorMessage = "",
   onCancel,
   onApprove,
 }: PurchaseApproveModalProps) {
@@ -156,8 +160,14 @@ export function PurchaseApproveModal({
               onChange={(e) => setApprovalMessage(e.target.value)}
               placeholder="승인 메시지를 입력해주세요."
               rows={4}
+              disabled={isSubmitting}
               className="w-full resize-none rounded-[16px] border border-[#FFD7BF] bg-white px-5 py-[14px] font-[Pretendard] text-[15px] leading-[24px] text-[var(--black-black-400,#1F1F1F)] placeholder:text-[var(--gray-gray-400,#ABABAB)] outline-none focus-visible:ring-2 focus-visible:ring-[#FF8225]/30"
             />
+            {errorMessage ? (
+              <p className="font-[Pretendard] text-[14px] font-medium leading-[22px] text-[#E53935]">
+                {errorMessage}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -165,6 +175,7 @@ export function PurchaseApproveModal({
           <Button
             type="button"
             variant="outlined"
+            disabled={isSubmitting}
             className="!h-14 min-w-0 flex-[2] !rounded-[14px] !border-0 !bg-[#FFF0E6] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-[#FF8225] hover:!bg-[#FFE8D9]"
             onClick={() => {
               onCancel();
@@ -176,14 +187,14 @@ export function PurchaseApproveModal({
           <Button
             type="button"
             variant="solid"
-            disabled={isOverBudget || !normalizedMessage}
+            disabled={isSubmitting || isOverBudget}
             className="!h-14 min-w-0 flex-[3] !rounded-[14px] !bg-[#FF8225] font-[Pretendard] !text-[17px] !font-semibold !leading-[26px] !text-white hover:!bg-[#F06E18]"
             onClick={() => {
-              if (isOverBudget || !normalizedMessage) return;
-              onApprove(normalizedMessage);
+              if (isSubmitting || isOverBudget) return;
+              void onApprove(normalizedMessage);
             }}
           >
-            승인하기
+            {isSubmitting ? "승인 중..." : "승인하기"}
           </Button>
         </div>
       </DialogContent>

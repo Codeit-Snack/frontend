@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateExpensesClientCache } from "@/app/budget-mng/_components/_lib/api";
 import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
 import { API_BASE_URL } from "@/lib/env";
 
@@ -38,6 +39,31 @@ function getAccessToken(): string | null {
   );
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return null;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function resolveOrganizationIdFromToken(token: string | null): string | null {
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  const raw =
+    payload?.organizationId ??
+    payload?.organization_id ??
+    payload?.orgId ??
+    payload?.org_id;
+  if (raw === undefined || raw === null) return null;
+  const value = String(raw).trim();
+  return value.length > 0 ? value : null;
+}
+
 function getDataPayload(payload: unknown): unknown {
   if (payload && typeof payload === "object" && "data" in payload) {
     return (payload as { data?: unknown }).data ?? null;
@@ -57,11 +83,18 @@ function parseErrorMessage(payload: unknown, fallback: string): string {
 
 async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const orgId = resolveOrganizationIdFromToken(token);
+  const isSameOriginProxy =
+    path.startsWith("/api/seller/purchase-orders") ||
+    path.startsWith("/api/expenses");
+  const target = isSameOriginProxy ? path : `${API_BASE_URL}${path}`;
+  const response = await fetch(target, {
     ...init,
+    ...(isSameOriginProxy ? { credentials: "include" } : {}),
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(orgId ? { "X-Organization-Id": orgId } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -144,4 +177,52 @@ export async function rejectSellerPurchaseOrder(params: {
     }
   );
   return getDataPayload(payload);
+}
+
+export async function completeSellerPurchaseOrder(params: {
+  orderId: number;
+  shippingFee?: string;
+}): Promise<unknown> {
+  const payload = await requestApi<unknown>(
+    `/api/seller/purchase-orders/${params.orderId}/record-purchase`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        platform: "OTHER",
+        note: "관리자 승인 처리",
+        ...(params.shippingFee ? { shippingFee: params.shippingFee } : {}),
+      }),
+    }
+  );
+  return getDataPayload(payload);
+}
+
+export async function createExpenseFromSellerOrder(params: {
+  orderId: number;
+  itemsAmount: number;
+  shippingAmount?: number;
+  note?: string;
+}): Promise<unknown | null> {
+  try {
+    const payload = await requestApi<unknown>("/api/expenses", {
+      method: "POST",
+      body: JSON.stringify({
+        purchaseOrderId: params.orderId,
+        itemsAmount: params.itemsAmount,
+        shippingAmount: params.shippingAmount ?? 0,
+        ...(params.note ? { note: params.note } : {}),
+      }),
+    });
+    invalidateExpensesClientCache();
+    return getDataPayload(payload);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "지출 생성에 실패했습니다.";
+    // 이미 지출이 등록된 주문은 승인 플로우를 막지 않습니다.
+    if (message.includes("이미 등록")) {
+      invalidateExpensesClientCache();
+      return null;
+    }
+    throw error;
+  }
 }
