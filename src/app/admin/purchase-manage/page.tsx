@@ -20,7 +20,7 @@ import {
   type PurchaseRequestListItem,
   type PurchaseRequestSortParam,
 } from "@/app/purchase-requests/_lib/api";
-import { getMembers } from "@/app/members/_lib/api";
+import { fetchMemberNameByIdMap } from "@/app/members/_lib/member-name-map";
 import {
   approveSellerPurchaseOrder,
   completeSellerPurchaseOrder,
@@ -236,17 +236,9 @@ export default function PurchaseManagePage() {
 
   useEffect(() => {
     let cancelled = false;
-    getMembers({ page: 1, pageSize: 1000 })
-      .then((result) => {
+    fetchMemberNameByIdMap()
+      .then((next) => {
         if (cancelled) return;
-        const next: Record<number, string> = {};
-        for (const m of result.members) {
-          const id = Number(m.id);
-          const name = String(m.name ?? "").trim();
-          if (Number.isFinite(id) && id > 0 && name) {
-            next[id] = name;
-          }
-        }
         setMemberNameById(next);
       })
       .catch(() => {

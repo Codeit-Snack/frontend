@@ -19,18 +19,26 @@ export async function GET(req: Request) {
   const upstreamUrl = `${API_BASE_URL}/api/expenses${query ? `?${query}` : ""}`
   const headers = buildHeaders(req)
 
-  const upstream = await fetch(upstreamUrl, {
-    method: "GET",
-    headers,
-  })
+  try {
+    const upstream = await fetch(upstreamUrl, {
+      method: "GET",
+      headers,
+    })
 
-  const text = await upstream.text()
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
-    },
-  })
+    const text = await upstream.text()
+    return new NextResponse(text, {
+      status: upstream.status,
+      headers: {
+        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      },
+    })
+  } catch (err) {
+    console.error("[api/expenses] upstream fetch failed", upstreamUrl, err)
+    return NextResponse.json(
+      { success: false, message: "백엔드에 연결하지 못했습니다." },
+      { status: 502 },
+    )
+  }
 }
 
 /** 백엔드 `POST /api/expenses` 프록시 */

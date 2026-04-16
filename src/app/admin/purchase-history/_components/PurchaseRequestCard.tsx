@@ -36,7 +36,11 @@ export function PurchaseRequestCard({
         "border-b border-[var(--gray-gray-200)] px-6 py-6 first:border-t last:border-b-0 cursor-pointer",
         className
       )}
-      onClick={() => router.push("/admin/purchase-history/detail")}
+      onClick={() =>
+        router.push(
+          `/admin/purchase-history/detail?id=${item.purchaseRequestId ?? item.id}`
+        )
+      }
     >
       <div className="flex items-start gap-3 mb-6">
         <div className="relative h-[80px] w-[80px] shrink-0 overflow-hidden rounded-[8px] border border-[var(--gray-gray-200,#E0E0E0)] bg-white p-4">
