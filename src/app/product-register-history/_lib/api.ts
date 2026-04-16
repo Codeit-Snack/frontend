@@ -1,5 +1,4 @@
 import { AUTH_ACCESS_TOKEN_KEY } from "@/lib/auth/constants";
-import { mockProductRegistrations } from "./mock-data";
 import type {
   ApiSuccessResponse,
   GetProductRegistrationsParams,

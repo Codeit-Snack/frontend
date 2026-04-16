@@ -79,7 +79,11 @@ export function PurchaseRequestTable({
               <tr
                 key={item.id}
                 className="[&>td]:border-b [&>td]:line_line_200_l last:[&>td]:border-b-0 cursor-pointer"
-                onClick={() => router.push("/admin/purchase-history/detail")}
+                onClick={() =>
+                  router.push(
+                    `/admin/purchase-history/detail?id=${item.purchaseRequestId ?? item.id}`
+                  )
+                }
               >
                 <td className="min-w-0 whitespace-nowrap pl-[80px] pr-[40px] py-6 text-center font-[Pretendard] text-[20px] font-normal leading-[32px] text-[var(--black-black-100,#6B6B6B)]">
                   {item.approvalDate}
